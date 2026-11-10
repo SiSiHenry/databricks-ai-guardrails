@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.databricks-guard/
+*.bak
+.DS_Store
