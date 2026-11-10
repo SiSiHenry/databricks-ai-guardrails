@@ -915,7 +915,9 @@ class Installer(unittest.TestCase):
         hooks = us["hooks"]["PreToolUse"]
         self.assertEqual(len(hooks), 1)
         cmd = hooks[0]["hooks"][0]["command"]
-        self.assertIn(str(self.home / ".databricks-guard" / "bin" / "databricks_guard.py"), cmd)
+        self.assertIn("databricks_guard.py hook --agent claude --require-profile agent", cmd)
+        if os.name != "nt":   # on Windows the folders are written as 8.3 short names
+            self.assertIn(str(self.home / ".databricks-guard" / "bin" / "databricks_guard.py"), cmd)
         self.assertIn("--require-profile agent", cmd)
         self.assertIn("Read(~/.databrickscfg)", us["permissions"]["deny"])
         cu = json.loads((self.home / ".cursor" / "hooks.json").read_text())
@@ -936,6 +938,18 @@ class Installer(unittest.TestCase):
             r = subprocess.run(cmd, shell=True, input=json.dumps(payload), capture_output=True,   # sh / cmd.exe
                                text=True, env=dict(os.environ, DBX_GUARD_NO_LOG="1"))
             self.assertEqual(r.returncode, want, r.stderr)
+
+    def test_windows_cursor_command_is_powershell_safe(self):
+        sys.path.insert(0, str(self.INSTALL.parent))
+        import importlib
+        os.environ["DBX_GUARD_FORCE_OS"] = "Windows"
+        try:
+            inst = importlib.reload(importlib.import_module("install"))
+            c = inst.hook_command(r"C:\Python312\python.exe", "cursor")
+            self.assertTrue(c.startswith("& ") and c.endswith("; exit $LASTEXITCODE"), c)
+            self.assertFalse(inst.hook_command(r"C:\Python312\python.exe", "claude").startswith("&"))
+        finally:
+            os.environ.pop("DBX_GUARD_FORCE_OS", None)
 
     @unittest.skipIf(os.name == "nt", "8.3 short names make the expected value machine-specific")
     def test_windows_hook_paths(self):

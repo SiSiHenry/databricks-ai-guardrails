@@ -135,10 +135,12 @@ def shell_word(path: str) -> str:
 
 def hook_command(python: str, agent: str) -> str:
     script = str(svc.paths()["bin"] / "databricks_guard.py")
-    exe = shell_word(python)
-    if OSNAME == "Windows" and agent == "cursor" and exe.startswith('"'):
-        exe = "& " + exe          # Cursor runs hooks via PowerShell, which needs & before a quoted path
-    return f"{exe} {shell_word(script)} hook --agent {agent} --require-profile agent"
+    cmd = f"{shell_word(python)} {shell_word(script)} hook --agent {agent} --require-profile agent"
+    if OSNAME == "Windows" and agent == "cursor":
+        # Cursor runs hooks through PowerShell: `&` runs a (possibly quoted) program path, and
+        # `exit $LASTEXITCODE` passes the guard's exit code 2 (= deny) through instead of 1.
+        cmd = f"& {cmd}; exit $LASTEXITCODE"
+    return cmd
 
 
 # --------------------------------------------------------------------------------------
