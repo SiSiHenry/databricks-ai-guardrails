@@ -194,12 +194,84 @@ Ask it to *"use the agent profile"* (Cursor / Code tab), or to *"use the list or
 </details>
 
 <details>
+<summary><b>My Databricks profile isn't called DEFAULT</b></summary>
+
+- **While installing by chat:** tell the AI your profile's name. It knows how to use it.
+- **Already installed:** run the "Use a Databricks profile that isn't called DEFAULT" command in
+  [Changing settings](#changing-settings).
+- **Not sure what it's called?** Run `databricks auth profiles` in the terminal. Your profiles are
+  listed in the first column.
+</details>
+
+<details>
+<summary><b>I asked the AI to change a guardrail setting and it refused</b></summary>
+
+That's expected. The AI isn't allowed to change its own guardrails. Follow
+[Changing settings](#changing-settings) to make the change yourself.
+</details>
+
+<details>
 <summary><b>I can't see the <code>.guards</code> folder in my project</b></summary>
 
 Folders whose names start with a dot are hidden. **Mac:** press
 <kbd>⌘ Cmd</kbd> + <kbd>Shift</kbd> + <kbd>.</kbd> in Finder. **Windows:** in File Explorer choose
 **View → Show → Hidden items**.
 </details>
+
+---
+
+## Changing settings
+
+### Why the AI can't change them for you
+
+You can **install** the guardrails by chatting. Once they're on, the AI is **blocked** from
+changing, pausing or removing them. That includes re-running the installer with new options,
+editing its settings files, or stopping its background service.
+
+This is on purpose. If the AI could change its own guardrails, a cleverly worded request, or a
+file it reads, could talk it into switching them off. So settings are changed by **you**, by
+pasting one command into the terminal. (Asking the AI for these changes will be refused.)
+
+> **Opening the terminal:** **Mac:** press <kbd>⌘ Cmd</kbd> + <kbd>Space</kbd>, type
+> **Terminal**, press <kbd>Enter</kbd>. **Windows:** click **Start**, type **PowerShell**, press
+> <kbd>Enter</kbd>. Then go to your project folder. **Mac:** type `cd `, drag the folder onto the
+> window, press <kbd>Enter</kbd>. **Windows:** type `cd ` and paste the folder path (Shift +
+> right-click the folder → **Copy as path**).
+
+### Common changes (Cursor and the Code tab)
+
+Run these **from your project folder**. Afterwards, quit and reopen Cursor/Claude.
+
+| I want to… | Mac | Windows |
+|---|---|---|
+| Use a Databricks profile that isn't called `DEFAULT` (replace `NAME`) | `python3 .guards/setup/install.py --user-only --upstream-profile NAME` | `py .guards\setup\install.py --user-only --upstream-profile NAME` |
+| Repair the setup (same as installing again) | `python3 .guards/setup/install.py --user-only` | `py .guards\setup\install.py --user-only` |
+| Turn the guardrails off | See [Uninstall](#uninstall) | See [Uninstall](#uninstall) |
+| Turn them back on | Run the "Repair" command above | Run the "Repair" command above |
+
+<details>
+<summary>Less common: use a different port for the background service</summary>
+
+The guard uses port **8787** on your own computer. If another program already uses it,
+[uninstall](#uninstall) first, then install again with `--port 8790` added to the "Repair"
+command. (The installer won't move an existing setup to a new port on its own.)
+</details>
+
+### Cowork
+
+| I want to… | How |
+|---|---|
+| Turn it off or on | **Customize → Plugins**, open **databricks-ai-guardrails**, use the on/off switch |
+| Remove it | **Customize → Plugins**, open it and remove it |
+| Allow non-Databricks query tools (for example a Snowflake "run query" tool) | Not a setting today: the plugin blocks every connector tool that runs queries. [Open an issue](https://github.com/SiSiHenry/databricks-ai-guardrails/issues) if you need this. |
+
+> ⚠️ **Watch out for "customize with Claude".** The Plugins page lets you customize a plugin by
+> chatting with Claude. Doing that with this plugin could weaken or remove the guardrails. Don't
+> customize it unless you mean to change the protection.
+>
+> **For organizations:** a Claude admin can add the plugin for everyone from
+> **Organization settings → Plugins & skills**, so the whole team uses the same version from one
+> place. Ask your admin whether members can edit organization plugins in your setup.
 
 ---
 
@@ -225,8 +297,9 @@ Then quit and reopen your apps. The uninstaller removes the hooks, the backgroun
 
 ### Teammates on the same project
 
-Once the project contains the `.guards` folder, a teammate can paste this into Cursor or the Code
-tab:
+Once the project contains the `.guards` folder, a teammate who **hasn't set it up yet** can paste
+this into Cursor or the Code tab. (On a computer that already has the guardrails, the AI will
+refuse; use [Changing settings](#changing-settings) instead.)
 
 ```
 Please set up the Databricks AI Guardrails for this computer. Run .guards/setup/install.py
