@@ -58,6 +58,12 @@ USER_DENY = [
 ]
 
 
+def _is_ours(cmd: str) -> bool:
+    """Recognise hooks written by this installer (also with Windows 8.3 short names)."""
+    c = cmd.lower()
+    return "databricks_guard" in c or ("hook --agent" in c and "databr" in c)
+
+
 def say(msg: str) -> None:
     print(msg, flush=True)
 
@@ -115,7 +121,10 @@ def win_short(path: str) -> str:
 
 def shell_word(path: str) -> str:
     if OSNAME == "Windows":
-        p = win_short(path).replace("\\", "/")   # forward slashes work in cmd, PowerShell and Git Bash
+        from pathlib import PureWindowsPath
+        pp = PureWindowsPath(path)
+        p = (win_short(str(pp.parent)).rstrip("\\/") + "/" + pp.name).replace("\\", "/")
+        # forward slashes work in cmd, PowerShell and Git Bash
         if " " in p:
             say(f"  warning: path has spaces and no 8.3 short name: {p}\n"
                 "           hooks may not run under PowerShell; `doctor` below will tell you.")
@@ -126,7 +135,10 @@ def shell_word(path: str) -> str:
 
 def hook_command(python: str, agent: str) -> str:
     script = str(svc.paths()["bin"] / "databricks_guard.py")
-    return f"{shell_word(python)} {shell_word(script)} hook --agent {agent} --require-profile agent"
+    exe = shell_word(python)
+    if OSNAME == "Windows" and agent == "cursor" and exe.startswith('"'):
+        exe = "& " + exe          # Cursor runs hooks via PowerShell, which needs & before a quoted path
+    return f"{exe} {shell_word(script)} hook --agent {agent} --require-profile agent"
 
 
 # --------------------------------------------------------------------------------------
@@ -157,7 +169,7 @@ def install_repo(repo: Path) -> list:
     cur.setdefault("permissions", {})["deny"] = union(cur.get("permissions", {}).get("deny", []),
                                                      src.get("permissions", {}).get("deny", []))
     pre = cur.get("hooks", {}).get("PreToolUse", [])
-    kept = [e for e in pre if not any("databricks_guard.py" in h.get("command", "")
+    kept = [e for e in pre if not any(_is_ours(h.get("command", ""))
                                       for h in e.get("hooks", []))]
     if len(kept) != len(pre):
         cur["hooks"]["PreToolUse"] = kept
@@ -175,7 +187,7 @@ def install_repo(repo: Path) -> list:
         data = load_json(ch)
         changed = False
         for ev, entries in list(data.get("hooks", {}).items()):
-            kept = [e for e in entries if "databricks_guard.py" not in e.get("command", "")]
+            kept = [e for e in entries if not _is_ours(e.get("command", ""))]
             if len(kept) != len(entries):
                 changed = True
                 data["hooks"][ev] = kept
@@ -248,7 +260,7 @@ def install_user(args) -> list:
     data.setdefault("env", {})["DATABRICKS_CONFIG_PROFILE"] = "agent"
     hooks = data.setdefault("hooks", {})
     pre = [e for e in hooks.get("PreToolUse", [])
-           if not any("databricks_guard.py" in h.get("command", "") for h in e.get("hooks", []))]
+           if not any(_is_ours(h.get("command", "")) for h in e.get("hooks", []))]
     pre.append({"matcher": CLAUDE_MATCHER,
                 "hooks": [{"type": "command", "command": hook_command(hook_py, "claude"), "timeout": 30}]})
     hooks["PreToolUse"] = pre
@@ -264,7 +276,7 @@ def install_user(args) -> list:
     data.setdefault("version", 1)
     hk = data.setdefault("hooks", {})
     for ev in CURSOR_EVENTS:
-        entries = [e for e in hk.get(ev, []) if "databricks_guard.py" not in e.get("command", "")]
+        entries = [e for e in hk.get(ev, []) if not _is_ours(e.get("command", ""))]
         entries.append({"command": hook_command(hook_py, "cursor"), "failClosed": True})
         hk[ev] = entries
     save_json(cu, data)
@@ -285,7 +297,7 @@ def install_user(args) -> list:
         backup(cfgfile)
         with open(cfgfile, "a", encoding="utf-8") as fh:
             fh.write(f"\n[agent]\n; coding agents use this: local metadata-only proxy, no real credentials\n"
-                     f"host  = {want}\ntoken = local-proxy-placeholder\n")
+                     f"host  = {want}\ntoken = local-proxy-placeholder\nretry_timeout_seconds = 15\n")
         done.append(f"{cfgfile}  (added [agent] -> {want})")
     up = args.upstream_profile
     if up != "DEFAULT" and not cp.has_section(up):
@@ -332,7 +344,7 @@ def uninstall_user() -> list:
         data = load_json(cs)
         pre = data.get("hooks", {}).get("PreToolUse", [])
         data.setdefault("hooks", {})["PreToolUse"] = [
-            e for e in pre if not any("databricks_guard.py" in h.get("command", "") for h in e.get("hooks", []))]
+            e for e in pre if not any(_is_ours(h.get("command", "")) for h in e.get("hooks", []))]
         if not data["hooks"]["PreToolUse"]:
             data["hooks"].pop("PreToolUse")
         if not data["hooks"]:
@@ -353,7 +365,7 @@ def uninstall_user() -> list:
     if cu.exists():
         data = load_json(cu)
         for ev in list(data.get("hooks", {})):
-            data["hooks"][ev] = [e for e in data["hooks"][ev] if "databricks_guard.py" not in e.get("command", "")]
+            data["hooks"][ev] = [e for e in data["hooks"][ev] if not _is_ours(e.get("command", ""))]
             if not data["hooks"][ev]:
                 data["hooks"].pop(ev)
         save_json(cu, data)

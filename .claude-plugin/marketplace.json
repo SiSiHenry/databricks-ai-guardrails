@@ -1,0 +1,19 @@
+{
+  "name": "databricks-ai-guardrails",
+  "owner": {
+    "name": "SiSiHenry"
+  },
+  "metadata": {
+    "description": "Guardrails that let AI assistants read Databricks metadata but never run queries or read data."
+  },
+  "plugins": [
+    {
+      "name": "databricks-ai-guardrails",
+      "source": "./plugins/databricks-ai-guardrails",
+      "description": "Lets Claude see your Databricks table and column names, and write code for you, but blocks it from running queries or reading data.",
+      "version": "0.1.0",
+      "category": "security",
+      "keywords": ["databricks", "guardrails", "unity-catalog", "data-safety"]
+    }
+  ]
+}

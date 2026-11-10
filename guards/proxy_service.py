@@ -61,6 +61,12 @@ def system() -> str:
     return os.environ.get("DBX_GUARD_FORCE_OS") or platform.system()   # "Darwin" | "Windows" | "Linux"
 
 
+def _is_ours(cmd: str) -> bool:
+    """Recognise hooks written by this installer (also with Windows 8.3 short names)."""
+    c = cmd.lower()
+    return "databricks_guard" in c or ("hook --agent" in c and "databr" in c)
+
+
 def run(cmd: List[str], dry: bool, check: bool = False) -> subprocess.CompletedProcess:
     if dry:
         print("  [dry-run] " + " ".join(cmd))
@@ -362,7 +368,7 @@ def _hook_commands() -> List[tuple]:
         for e in entries:
             cmds = [h.get("command", "") for h in e.get("hooks", [])] if agent == "claude" else [e.get("command", "")]
             for c in cmds:
-                if "databricks_guard.py" in c:
+                if _is_ours(c):
                     found.append((agent, c))
     return found
 
@@ -395,7 +401,11 @@ def cmd_doctor(_args) -> int:
                      "cursor": {"hook_event_name": "beforeShellExecution", "command": "git status"}}
     env = dict(os.environ, DBX_GUARD_NO_LOG="1")
     for agent, c in hooks:
-        for sh in _shells():
+        shells = _shells()
+        if system() == "Windows":   # test each hook in the shell its app really uses
+            want = ("powershell", "pwsh") if agent == "cursor" else ("bash", "cmd")
+            shells = [sh for sh in shells if Path(sh[0]).stem.lower() in want] or shells
+        for sh in shells:
             name = Path(sh[0]).name
             try:
                 d = subprocess.run(sh + [c], input=json.dumps(deny_payload[agent]), capture_output=True,

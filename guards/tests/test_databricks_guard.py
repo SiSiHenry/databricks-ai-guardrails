@@ -601,7 +601,9 @@ class ProxyU2M(unittest.TestCase):
             cli = d / "bin" / "databricks"
             cli.write_text("#!/bin/sh\ncase \"$1\" in auth) echo '{\"access_token\":\"U2M-USER-TOKEN\","
                            "\"token_type\":\"Bearer\",\"expiry\":\"2099-01-01T00:00:00Z\"}';; "
-                           "*) echo 'Databricks CLI v0.300.0';; esac\n")
+                           "*) echo 'Databricks CLI v0.300.0';; esac\nexit 0\n"
+                           # older SDKs only accept a CLI binary larger than 1 MB (the real one is)
+                           + ("#" + "x" * 1023 + "\n") * 1100)
             cli.chmod(0o755)
             with socket.socket() as s_:
                 s_.bind(("127.0.0.1", 0)); port = s_.getsockname()[1]
@@ -971,3 +973,61 @@ class Uninstall(unittest.TestCase):
             self.assertEqual(json.loads((home / ".claude" / "settings.json").read_text()), original)
             self.assertEqual(json.loads((home / ".cursor" / "hooks.json").read_text())["hooks"], {})
             self.assertNotIn("[agent]", (home / ".databrickscfg").read_text())
+
+
+class CoworkPlugin(unittest.TestCase):
+    ROOT = GUARD.parent.parent
+    PLUGIN = ROOT / "plugins" / "databricks-ai-guardrails"
+
+    def setUp(self):
+        if not self.PLUGIN.is_dir():
+            self.skipTest("plugin folder not present (installed copy)")
+
+    def test_plugin_files(self):
+        mk = json.loads((self.ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        src = (self.ROOT / mk["plugins"][0]["source"]).resolve()
+        self.assertEqual(src, self.PLUGIN.resolve())
+        pj = json.loads((self.PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(pj["name"], mk["plugins"][0]["name"])
+        self.assertTrue((self.PLUGIN / "skills" / "databricks-metadata-only" / "SKILL.md").is_file())
+        hooks = json.loads((self.PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+        cmd = hooks["PreToolUse"][0]["hooks"][0]["command"]
+        self.assertIn("--mode cowork", cmd)
+        for h in (hooks["PreToolUse"][0]["hooks"][0], hooks["SessionStart"][0]["hooks"][0]):
+            rel = h["command"].split("${CLAUDE_PLUGIN_ROOT}/")[1].split('"')[0]
+            self.assertTrue((self.PLUGIN / rel).is_file(), rel)
+
+    def test_plugin_guard_is_in_sync(self):
+        self.assertEqual((self.PLUGIN / "scripts" / "databricks_guard.py").read_bytes(), GUARD.read_bytes(),
+                         "copy guards/databricks_guard.py to plugins/databricks-ai-guardrails/scripts/")
+
+    def run_hook(self, payload):
+        hooks = json.loads((self.PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+        args = hooks["PreToolUse"][0]["hooks"][0]["command"].split('" ', 1)[1].split()
+        env = dict(os.environ, DBX_GUARD_NO_LOG="1", CLAUDE_PLUGIN_ROOT=str(self.PLUGIN))
+        return subprocess.run([sys.executable, str(self.PLUGIN / "scripts" / "databricks_guard.py"), *args],
+                              input=json.dumps(payload), capture_output=True, text=True, env=env).returncode
+
+    def test_cowork_connectors(self):
+        cases = {
+            ("mcp__3f9a1c__execute_sql", '{"statement": "select 1"}'): 2,
+            ("mcp__3f9a1c__run_query", '{"q": "x"}'): 2,
+            ("mcp__databricks__query_genie_space", "{}"): 2,
+            ("mcp__x__get_warehouse", "{}"): 2,
+            ("mcp__x__preview_table", '{"table": "a.b.c"}'): 2,
+            ("mcp__3f9a1c__list_tables", '{"catalog": "main"}'): 0,
+            ("mcp__x__describe_table", '{"table": "a.b.c"}'): 0,
+            ("mcp__slack__search_messages", '{"query": "select a file from drive"}'): 0,
+            ("mcp__gmail__send_email", '{"body": "hello"}'): 0,
+        }
+        for (name, args), want in cases.items():
+            with self.subTest(name=name):
+                self.assertEqual(self.run_hook({"tool_name": name, "tool_input": json.loads(args)}), want)
+
+    def test_cowork_shell(self):
+        self.assertEqual(self.run_hook({"tool_name": "Bash", "tool_input": {
+            "command": "databricks tables list main sales"}}), 0)
+        self.assertEqual(self.run_hook({"tool_name": "Bash", "tool_input": {
+            "command": "databricks sql query 'select 1'"}}), 2)
+        self.assertEqual(self.run_hook({"tool_name": "Write", "tool_input": {
+            "file_path": "orders.sql", "content": "SELECT * FROM main.sales.orders"}}), 0)

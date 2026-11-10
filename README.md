@@ -2,19 +2,9 @@
 
 **Let Claude and Cursor see the *layout* of your Databricks data, but never the data itself.**
 
-When an AI assistant helps you write code for Databricks, it's useful for it to know which tables
-and columns exist. It should **not** be able to run queries or read the rows inside those tables.
-This tool makes sure of that, on your own computer, for:
-
-| App | Supported |
-|---|---|
-| **Claude desktop app** (the *Code* tab) | ✅ |
-| **Claude Code** (in the terminal) | ✅ |
-| **Cursor** (the editor app) | ✅ |
-| **Cursor CLI** (in the terminal) | ✅ (see [note](#good-to-know)) |
-| **Mac** and **Windows** | ✅ |
-
-### What the AI can and can't do
+When an AI assistant helps you with Databricks, it's useful for it to know which tables and
+columns exist. It should **not** be able to run queries or read the rows inside those tables.
+This tool makes sure of that.
 
 Think of a library. The AI may read the **catalogue cards** (book titles, chapter names), but it
 may not **open the books**.
@@ -23,262 +13,184 @@ may not **open the books**.
 |---|---|
 | List catalogs, schemas and tables | Run SQL queries |
 | See column names and types | See, preview or count rows |
-| Write SQL or Python code for you | Run that code against Databricks |
+| Write SQL or Python code for you | Run that code on Databricks |
 | | Read your Databricks password or login |
 
 The AI can still write queries for you. **You** decide whether to run them.
 
 ---
 
-## Contents
+## Pick the app you use
 
-1. [Before you start](#1-before-you-start-about-10-minutes-once)
-2. [Download this tool](#2-download-this-tool)
-3. [Install it](#3-install-it)
-4. [Turn it on in your apps](#4-turn-it-on-in-your-apps)
-5. [Check that it works](#5-check-that-it-works)
-6. [Everyday use](#6-everyday-use)
-7. [Troubleshooting](#7-troubleshooting)
-8. [Uninstall](#8-uninstall)
-9. [For your team and IT](#9-for-your-team-and-it)
+| I use… | How you set it up | Time |
+|---|---|---|
+| **Claude app: Cowork** | [Add a plugin with a few clicks](#claude-app-cowork) | 2 min |
+| **Cursor desktop app** | [Paste one message into the chat](#cursor-desktop-app) | 10 min |
+| **Claude app: Code tab** | [Paste one message into the chat](#claude-app-code-tab) | 10 min |
+| **Claude Code or Cursor CLI in a terminal** | [Manual install](docs/manual-install.md) | 10 min |
 
-> **What is "the terminal"?** It's a window where you type commands. You'll only need it for a few
-> minutes, to copy and paste the commands below.
-> - **Mac:** press <kbd>⌘ Cmd</kbd> + <kbd>Space</kbd>, type **Terminal**, press <kbd>Enter</kbd>.
-> - **Windows:** click **Start**, type **PowerShell**, press <kbd>Enter</kbd>.
->
-> To run a command, paste it in and press <kbd>Enter</kbd>.
+Works on **Mac** and **Windows**. Using more than one app? Set up each one. They don't conflict.
 
 ---
 
-## 1. Before you start (about 10 minutes, once)
+## Claude app: Cowork
 
-You need three things. For each one, run the "check" command first. If it works, skip the install.
+No downloads and no typing commands. You add the guardrails as a **plugin**.
 
-### a) Python
-
-| | Mac | Windows |
-|---|---|---|
-| **Check** | `python3 --version` | `py --version` |
-| **You should see** | `Python 3.9` or higher | `Python 3.9` or higher |
-| **If it's missing** | Download from [python.org/downloads](https://www.python.org/downloads/) and install | Download from [python.org/downloads](https://www.python.org/downloads/). In the installer, **tick "Add python.exe to PATH"** |
-
-> **Mac:** if a box pops up asking to install "command line developer tools", click **Install**
-> and wait for it to finish.
-
-### b) The Databricks command-line tool
-
-| | Mac | Windows |
-|---|---|---|
-| **Check** | `databricks --version` | `databricks --version` |
-| **You should see** | `Databricks CLI v0.2xx` or higher | `Databricks CLI v0.2xx` or higher |
-| **If it's missing** | `brew install databricks/tap/databricks` | `winget install Databricks.DatabricksCLI` |
-
-> **Mac:** if `brew` isn't found, install Homebrew first from [brew.sh](https://brew.sh), then try again.
-> **Windows:** close PowerShell and open it again after installing.
-
-More help: [Databricks CLI install guide](https://docs.databricks.com/aws/en/dev-tools/cli/install).
-
-### c) Sign in to Databricks
-
-1. Open Databricks in your web browser and copy the address from the address bar, **up to and
-   including** `.com` or `.net`. For example, `https://adb-1234567890.12.azuredatabricks.net` or
-   `https://mycompany.cloud.databricks.com`.
-2. Run this, replacing the address with yours:
-
+1. Open the **Claude** app.
+2. In the left sidebar, click **Customize**.
+3. Click **Plugins**.
+4. Click **Add**, then **Add marketplace**.
+5. Type this and confirm:
    ```
-   databricks auth login --host https://YOUR-WORKSPACE-ADDRESS --profile DEFAULT
+   SiSiHenry/databricks-ai-guardrails
    ```
+6. In the list that appears, find **databricks-ai-guardrails** and click **Add** (or **Install**).
+7. Make sure the plugin is switched **on**.
+8. **Start a new Cowork task.** Tasks that were already open don't pick up the plugin.
 
-3. Your browser opens. Sign in as usual. When it says you're done, return to the terminal.
-
----
-
-## 2. Download this tool
-
-**Easiest:** on this page, click the green **`<> Code`** button, then **Download ZIP**.
-Open your **Downloads** folder and double-click the ZIP to unpack it. You now have a folder called
-**`databricks-ai-guardrails-main`**.
+That's it. Now [check that it works](#check-that-it-works).
 
 <details>
-<summary>Prefer Git? Click here.</summary>
+<summary>Can't use "Add marketplace"? Upload the plugin instead.</summary>
 
-```
-git clone https://github.com/SiSiHenry/databricks-ai-guardrails.git
-```
-The folder will be called `databricks-ai-guardrails` instead of `databricks-ai-guardrails-main`.
+1. On this page, click the green **`<> Code`** button, then **Download ZIP**. Unzip it (double-click).
+2. In the Claude app: **Customize → Plugins → Add → Upload plugin**.
+3. Choose the folder **`plugins/databricks-ai-guardrails`** inside the unzipped folder.
 </details>
 
----
-
-## 3. Install it
-
-You'll point the installer at **your project folder**: the folder you open in Claude or Cursor.
-
-### Mac
-
-1. In Terminal, go to the downloaded folder:
-   ```
-   cd ~/Downloads/databricks-ai-guardrails-main
-   ```
-2. Type the start of the command below, **including the space at the end**. Don't press Enter yet:
-   ```
-   python3 install.py 
-   ```
-3. **Drag your project folder** from Finder onto the Terminal window. Its location appears after
-   the command.
-4. Press <kbd>Enter</kbd>.
-
-### Windows
-
-1. In PowerShell, go to the downloaded folder:
-   ```
-   cd $HOME\Downloads\databricks-ai-guardrails-main
-   ```
-2. In File Explorer, find your project folder. Hold <kbd>Shift</kbd>, **right-click** it, and choose
-   **Copy as path**.
-3. In PowerShell, type `py install.py ` (with a space at the end), then **right-click** to paste the
-   path. It should look like:
-   ```
-   py install.py "C:\Users\you\Documents\my-project"
-   ```
-4. Press <kbd>Enter</kbd>.
-
-### What you should see
-
-The installer lists what it set up, then runs a self-test. The last line should say:
-
-```
-RESULT: ALL CHECKS PASSED
-```
-
-If it says `PROBLEMS FOUND`, see [Troubleshooting](#7-troubleshooting).
-
-> **Using several projects?** Run the install command once for each project folder. The setup on
-> your computer is shared, so the extra runs only add the rule files to each project.
+> **Good to know (Cowork):**
+> - The guard checks every tool Claude uses in Cowork, including connectors.
+> - It blocks any connector tool whose name says it runs **SQL or queries**, even ones not from
+>   Databricks, because a connector's name doesn't always show which service it belongs to.
+> - Tools that **list or describe** tables still work.
 
 ---
 
-## 4. Turn it on in your apps
+## Cursor desktop app
 
-The installer has already configured every app. Each app just needs to be **fully closed and
-reopened** so it notices.
+You'll ask Cursor's AI to install the guardrails for you. You only click **Run** when it asks,
+and sign in to Databricks once in your browser.
 
-### Claude desktop app
+1. Open **Cursor**.
+2. Open the project folder you work on (**File → Open Folder…**, or pick the project in the
+   Agents window).
+3. Open the AI chat (Agent). If there's a choice between **Local** and **Cloud**, choose **Local**.
+4. Copy this message, paste it into the chat, and press <kbd>Enter</kbd>:
 
-1. **Quit** Claude completely. **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** right-click
-   the Claude icon in the taskbar, then **Close window**. Also check the system tray (next to the
-   clock) and quit it there if it's still running.
-2. Open Claude again and click the **Code** tab.
-3. Choose your **project folder**.
-4. Done. Go to [step 5](#5-check-that-it-works) to test it.
+   ```
+   Please install the Databricks AI Guardrails safety tool on this computer for this project.
+   Read https://raw.githubusercontent.com/SiSiHenry/databricks-ai-guardrails/main/AGENT_INSTALL.md
+   and follow it step by step. Explain each step to me in simple words and tell me whenever I
+   need to do something.
+   ```
 
-> The ordinary **chat** tab can't run commands on your computer, so it doesn't need this. Don't
-> connect a Databricks connector there that can run queries.
+5. Cursor will ask permission to run commands. Click **Run** each time.
+6. If it asks for your **Databricks address**: open Databricks in your browser and copy the
+   address from the address bar, up to `.com` or `.net` (for example
+   `https://mycompany.cloud.databricks.com`). Paste it into the chat.
+7. If a **browser window** opens, sign in to Databricks as usual, then return to Cursor.
+8. When Cursor says it's done, **quit Cursor completely and reopen it**.
+   **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** **File → Exit**.
 
-### Claude Code (terminal)
+Now [check that it works](#check-that-it-works).
 
-1. Close every terminal window where `claude` is running.
-2. Open a new terminal, go to your project folder, and start Claude Code:
-   - **Mac:** `cd ` + drag the project folder in, press <kbd>Enter</kbd>, then type `claude`
-   - **Windows:** `cd "C:\path\to\your\project"`, then `claude`
-3. Done. Go to [step 5](#5-check-that-it-works).
-
-### Cursor (editor app)
-
-1. **Quit** Cursor completely. **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** **File → Exit**.
-2. Open Cursor and open your **project folder** (**File → Open Folder…**).
-3. Done. Go to [step 5](#5-check-that-it-works).
-
-### Cursor CLI (terminal)
-
-1. Close every terminal window where the Cursor agent is running.
-2. Open a new terminal, go to your project folder, and start it (`cursor-agent`, or `agent` in
-   newer versions).
-3. Done. Go to [step 5](#5-check-that-it-works).
+> Keep using **Local** agents for Databricks work. Cursor's **Cloud** agents run on Cursor's
+> servers, where this guard isn't installed.
 
 ---
 
-## 5. Check that it works
+## Claude app: Code tab
 
-In the app you just set up, send these three messages to the AI, one at a time.
+Same idea: Claude installs it for you.
 
-| # | Type this to the AI | What should happen |
+1. Open the **Claude** app and click the **Code** tab.
+2. Choose your **project folder**.
+3. Copy this message, paste it into the chat, and press <kbd>Enter</kbd>:
+
+   ```
+   Please install the Databricks AI Guardrails safety tool on this computer for this project.
+   Read https://raw.githubusercontent.com/SiSiHenry/databricks-ai-guardrails/main/AGENT_INSTALL.md
+   and follow it step by step. Explain each step to me in simple words and tell me whenever I
+   need to do something.
+   ```
+
+4. When Claude asks permission to run a command, click **Allow**.
+5. If it asks for your **Databricks address**, copy it from your browser's address bar (up to `.com`
+   or `.net`) and paste it in. If a browser window opens, sign in to Databricks.
+6. When Claude says it's done, **quit the Claude app completely and reopen it**.
+   **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** right-click the Claude icon next to the
+   clock and choose **Quit**.
+
+Now [check that it works](#check-that-it-works).
+
+---
+
+## Check that it works
+
+Send these three messages to the AI, one at a time.
+
+| # | Type this | What should happen |
 |---|---|---|
-| 1 | *Use the Databricks CLI with the agent profile to list my catalogs.* | ✅ It runs `databricks -p agent catalogs list` and shows catalog names. |
-| 2 | *Run the SQL query `SELECT 1` on Databricks.* | ❌ It's **blocked**. You'll see a message starting with **"BLOCKED by Databricks metadata-only rule"**, and the AI offers to write the code for you instead. |
-| 3 | *Write a SQL query that counts rows per day in one of my tables.* | ✅ It **writes** the query but **doesn't run** it. |
+| 1 | *List the tables in one of my Databricks catalogs.* | ✅ It shows table names. |
+| 2 | *Run the SQL query `SELECT 1` on Databricks.* | ❌ **Blocked.** You'll see **"BLOCKED by Databricks metadata-only rule"** (or the AI tells you the guardrail stopped it) and it offers to write the code instead. |
+| 3 | *Write a SQL query that counts rows per day in one of my tables.* | ✅ It **writes** the query into a file but **doesn't run** it. |
 
 If all three behave like this, you're protected. 🎉
 
----
-
-## 6. Everyday use
-
-**There's nothing to do.** The guard starts automatically when you log in to your computer.
-
-- **If the AI says it's "waiting for the developer's Databricks login"**, your Databricks sign-in
-  has expired. Sign in again (step 1c). The tool picks it up within about 15 seconds.
-- **To check on it at any time**, run:
-
-  | Mac | Windows |
-  |---|---|
-  | `python3 ~/.databricks-guard/bin/proxy_service.py status` | `py $HOME\.databricks-guard\bin\proxy_service.py status` |
-
-  You'll see `listening: yes` and `acting as: your-email@company.com`.
-- **To run the full self-test again**, use the same command with `doctor` instead of `status`.
+> **Cursor and the Code tab:** if test 1 fails, ask the AI to *"use the Databricks CLI with the
+> agent profile"*. That's the safe route it's allowed to use.
+>
+> **Cowork:** test 1 needs Cowork to be able to reach Databricks, usually through a Databricks
+> connector (**Customize → Connectors**). Without one, tests 2 and 3 still show the guard working.
 
 ---
 
-## 7. Troubleshooting
+## Everyday use
+
+**Nothing to do.** In Cursor and the Code tab, the guard starts by itself when you log in to your
+computer. In Cowork, the plugin stays on until you switch it off.
+
+If the AI says it's **"waiting for the developer's Databricks login"**, your Databricks sign-in has
+expired. Ask the AI: *"How do I sign in to Databricks again?"*, or run
+`databricks auth login --profile DEFAULT` yourself. The guard picks up the new sign-in within
+about 15 seconds.
+
+---
+
+## Troubleshooting
 
 <details>
-<summary><b>"python3: command not found" (Mac) or "py is not recognized" (Windows)</b></summary>
+<summary><b>The AI says Python isn't installed</b></summary>
 
-Python isn't installed, or Windows can't find it. Install it from
-[python.org/downloads](https://www.python.org/downloads/). On Windows, tick **"Add python.exe to
-PATH"**. Then close the terminal, open a new one, and try again.
+Download Python from [python.org/downloads](https://www.python.org/downloads/) and install it. On
+Windows, tick **"Add python.exe to PATH"** on the first screen. Quit and reopen Cursor/Claude, then
+paste the install message again.
 </details>
 
 <details>
-<summary><b>The installer warns "databricks CLI not found"</b></summary>
+<summary><b>Test 2 was NOT blocked</b></summary>
 
-Install the Databricks command-line tool (step 1b), close and reopen the terminal, sign in
-(step 1c), then run the install command again.
+- **Cowork:** check the plugin is switched on (**Customize → Plugins**), then start a **new** task.
+- **Cursor / Code tab:** make sure you fully quit and reopened the app. Make sure you're in the same
+  project folder, and (Cursor) that the agent is **Local**. Then ask the AI: *"Run the Databricks
+  guardrails self-test with proxy_service.py doctor and tell me the result."* Every line should
+  start with `ok`.
 </details>
 
 <details>
-<summary><b>The self-test says <code>FAIL … acting as: error</code></b></summary>
+<summary><b>The AI says "connection refused" or "waiting for login"</b></summary>
 
-The tool can't sign in to Databricks for you. Repeat step 1c (sign in), then run the self-test
-(`doctor`, see step 6).
-</details>
-
-<details>
-<summary><b>The AI says "connection refused" when it uses Databricks</b></summary>
-
-The guard's background service isn't running. Restart it:
-
-| Mac | Windows |
-|---|---|
-| `python3 ~/.databricks-guard/bin/proxy_service.py restart` | `py $HOME\.databricks-guard\bin\proxy_service.py restart` |
-
-If that doesn't help, run the install command from step 3 again.
+Ask the AI: *"Show me the Databricks guardrails status using proxy_service.py status."* If it says
+it's **not listening**, restart your computer. The guard starts at login. If it says
+**waiting for login**, sign in to Databricks again (see [Everyday use](#everyday-use)).
 </details>
 
 <details>
 <summary><b>The AI got blocked when it only wanted to list tables</b></summary>
 
-It probably forgot to use the safe profile. Ask it to *"use the agent profile"*. It will then run
-`databricks -p agent …`, which is allowed.
-</details>
-
-<details>
-<summary><b>Test 2 in step 5 was NOT blocked</b></summary>
-
-1. Make sure you fully quit and reopened the app (step 4).
-2. Run the self-test (`doctor`, step 6). Every line should start with `ok`.
-3. Make sure you opened the same project folder you gave the installer.
+Ask it to *"use the agent profile"* (Cursor / Code tab), or to *"use the list or describe tool"*
+(Cowork).
 </details>
 
 <details>
@@ -289,82 +201,65 @@ Folders whose names start with a dot are hidden. **Mac:** press
 **View → Show → Hidden items**.
 </details>
 
-<details>
-<summary><b>My Databricks profile isn't called DEFAULT</b></summary>
-
-Add `--upstream-profile YOUR-PROFILE-NAME` to the end of the install command in step 3.
-</details>
-
 ---
 
-## 8. Uninstall
+## Uninstall
 
-From the downloaded folder:
+**Cowork:** **Customize → Plugins**, open **databricks-ai-guardrails**, and remove it (or switch
+it off).
+
+**Cursor / Code tab:** for safety, the AI isn't allowed to remove the guardrails, so you do this
+step yourself. Open the terminal (**Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Space</kbd>, type **Terminal**;
+**Windows:** **Start**, type **PowerShell**), paste these two lines and press <kbd>Enter</kbd>:
 
 | Mac | Windows |
 |---|---|
-| `python3 install.py --uninstall` | `py install.py --uninstall` |
+| `curl -fsSL -o /tmp/g.zip https://github.com/SiSiHenry/databricks-ai-guardrails/archive/refs/heads/main.zip && unzip -oq /tmp/g.zip -d /tmp/g && python3 /tmp/g/databricks-ai-guardrails-main/install.py --uninstall` | `iwr https://github.com/SiSiHenry/databricks-ai-guardrails/archive/refs/heads/main.zip -OutFile $env:TEMP\g.zip; Expand-Archive $env:TEMP\g.zip $env:TEMP\g -Force; py $env:TEMP\g\databricks-ai-guardrails-main\install.py --uninstall` |
 
-This:
-- removes the hooks from Claude and Cursor;
-- removes the background service;
-- removes the `[agent]` profile;
-- puts your settings back as they were.
-
-Then quit and reopen your apps. The rule files in your project (`CLAUDE.md`, `.cursor/rules/`,
-`.guards/`) stay until you delete them.
+Then quit and reopen your apps. The uninstaller removes the hooks, the background service and the
+`[agent]` profile, and puts your settings back as they were.
 
 ---
 
-## 9. For your team and IT
+## For your team and IT
 
-### Teammates
+### Teammates on the same project
 
-If your project already contains the `.guards` folder (someone set it up and shared it), a
-teammate only needs to set up **their own computer**. They run this **from inside the project folder**:
+Once the project contains the `.guards` folder, a teammate can paste this into Cursor or the Code
+tab:
 
-| Mac | Windows |
-|---|---|
-| `python3 .guards/setup/install.py --user-only` | `py .guards\setup\install.py --user-only` |
-
-Then they follow steps 4 and 5.
+```
+Please set up the Databricks AI Guardrails for this computer. Run .guards/setup/install.py
+--user-only from this project folder (use py on Windows, python3 on Mac), then tell me the
+self-test result and remind me to restart the app.
+```
 
 ### How it works
 
-```
-  AI assistant (Claude / Cursor)
-        │ every command it wants to run
-        ▼
-  ① Guard: checks the command first and blocks anything that would query or read data
-        │ allowed commands only
-        ▼
-  ② Local gateway on your computer: forwards only "list / describe" requests to Databricks,
-        │ using YOUR sign-in. The AI never holds your login.
-        ▼
-  Databricks
-```
+| App | What protects you |
+|---|---|
+| **Cowork** | A plugin. Its check runs inside Cowork's sandbox before every tool call and blocks anything that would query or read data. |
+| **Cursor, Code tab, terminals** | ① A **guard** checks every command and tool call before it runs. ② A small **local gateway** on your computer passes only "list / describe" requests to Databricks using *your* sign-in, so the AI never holds your login. |
 
-There are three layers:
-1. **A written rule** (`CLAUDE.md`, `.cursor/rules/`) tells the AI what's allowed.
-2. **A guard** checks every command, file read and tool call **before** it runs, and blocks
-   violations.
-3. **A local gateway** passes only metadata requests to Databricks. Even a command that slipped
-   past the guard can't read data.
+Both use the same written rule, which tells the AI what's allowed. Every decision is logged on your
+computer. To check that the AI followed the rule, ask it to run
+`.guards/databricks_guard.py verify`.
 
-Every decision is logged on your computer. To check that the AI has followed the rule, run this in
-the project folder: `python3 .guards/databricks_guard.py verify` (Windows:
-`py .guards\databricks_guard.py verify`).
-
-The technical guide is in [`guards/README.md`](guards/README.md).
+Technical guide: [`guards/README.md`](guards/README.md). Cowork plugin:
+[`plugins/databricks-ai-guardrails`](plugins/databricks-ai-guardrails).
 
 ### Good to know
 
-- **Same computer, same user.** The AI runs as you on your computer. The guard blocks the known
-  ways it could reach your Databricks login. That makes this a strong safety net, but not a
-  locked vault. For stricter setups, see the technical guide.
-- **Cursor CLI.** Today the Cursor CLI only lets the guard check **shell commands**, not its other
-  tools. The local gateway still allows metadata only, so data stays protected.
-- **Claude chat** (not the Code tab) doesn't run commands on your computer, so it isn't covered.
-  Don't give it a Databricks connector that can run queries.
-- **Requirements:** macOS or Windows 10/11, Python 3.9+, Databricks CLI 0.205+, and an OAuth
-  (browser) sign-in to Databricks.
+- **A safety net, not a vault.** The AI runs as you on your computer. The guard blocks the known
+  ways it could reach your Databricks login, but this is a strong safety net, not a locked vault.
+  For stricter setups, see the technical guide.
+- **Cursor Cloud agents** don't use your computer, so this guard doesn't apply there. Use
+  **Local**.
+- **Cursor CLI** currently lets the guard check only shell commands. The local gateway still
+  allows metadata only.
+- **Claude chat** (not Cowork or Code) doesn't run tools on your computer. Don't connect a
+  Databricks connector there that can run queries.
+- **Requirements:**
+  - **Cowork:** nothing extra.
+  - **Cursor and the Code tab:** Mac or Windows 10/11, Python 3.9+ and the Databricks CLI. The AI
+    checks both, and installs the CLI if it's missing.

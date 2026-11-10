@@ -1,5 +1,11 @@
 # Databricks metadata-only guard (macOS + Windows, OAuth U2M, runs locally)
 
+> This guide covers the **local** setup (Cursor, Claude Code, the Claude app's Code tab). For
+> **Claude Cowork**, the same guard ships as a plugin in `plugins/databricks-ai-guardrails`. It runs
+> inside Cowork's sandbox with `--mode cowork`, which has no local gateway and stricter connector
+> rules. Keep `plugins/.../scripts/databricks_guard.py` identical to this folder's copy; a test
+> checks it.
+
 A deterministic check that goes with the rule in `CLAUDE.md` and
 `.cursor/rules/databricks-metadata-only.mdc`.
 - **What the agent may do:** read Unity Catalog metadata and write code.

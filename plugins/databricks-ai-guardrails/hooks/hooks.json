@@ -1,0 +1,29 @@
+{
+  "description": "Databricks AI Guardrails: check every tool call before it runs and block anything that would query or read Databricks data.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Write|Edit|MultiEdit|NotebookEdit|Grep|Glob|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/databricks_guard.py\" hook --agent claude --mode cowork",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/skills/databricks-metadata-only/references/rule.md\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

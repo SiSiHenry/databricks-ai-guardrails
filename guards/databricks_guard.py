@@ -34,6 +34,7 @@ import os
 import re
 import shlex
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -155,7 +156,15 @@ UC_METADATA_PATH = re.compile(
 # With --require-profile <name> (or DBX_GUARD_REQUIRED_PROFILE), the agent may talk to
 # Databricks ONLY through that profile, which points at the local metadata proxy.
 CTX: Dict[str, object] = {"required_profile": os.environ.get("DBX_GUARD_REQUIRED_PROFILE") or None,
-                          "env_profile_ok": False}
+                          "env_profile_ok": False,
+                          # "cowork": Claude Cowork sandbox (plugin). Connector names can be opaque there,
+                          # so any tool whose NAME says it runs queries is denied, Databricks hint or not.
+                          "mode": os.environ.get("DBX_GUARD_MODE", "local")}
+
+STRICT_QUERY_TOOL = re.compile(
+    r"(execute|run|submit|exec)[_-]?(sql|query|queries|statement|command|notebook|job|code|python|spark)|"
+    r"(^|[_-])(sql|dbsql|hql|spark[_-]?sql)($|[_-])|statement|genie|warehouse|query[_-]?(data|table|rows)|"
+    r"(sample|preview|read)[_-]?(table|rows|data)", re.I)
 
 CRED_FILES = re.compile(r"\.databrickscfg|\.databricks[/\\]token-cache|token-cache\.json|"
                         r"databricks[/\\]\.?credentials|\.netrc\b", re.I)
@@ -215,7 +224,7 @@ REMOTE_EXEC = re.compile(
     r"\b(curl|wget)\b[^\n|]*\|\s*python", re.I)
 PROXY_START = re.compile(r"\b(dbx_metadata_proxy|run_proxy)\.py\b(?![^\n]*\s(-h|--help)\b)|"
                          r"\bproxy_service\.py\s+(install|uninstall|restart)\b|"
-                         r"\binstall\.py\b[^\n]*(--user-only|--no-autostart|--upstream-profile)", re.I)
+                         r"\binstall\.py\b[^\n]*(--user-only|--no-autostart|--upstream-profile|--uninstall)", re.I)
 PROXY_KILL = re.compile(r"\b(pkill|killall)\s+(-\w+\s+)*['\"]?(python|Python)|\btaskkill\b[^\n]*python|"
                         r"\b(Stop-Process|spps)\b[^\n]*python|Get-Process\s+python\w*[^\n]*\|\s*(Stop-Process|spps)|"
                         r"\bkill\s+(-\d+\s+)?\$\(\s*(pgrep|lsof)|\blsof\s+-ti?\s*:?\s*8787[^\n]*\|\s*xargs\s+kill",
@@ -1014,9 +1023,16 @@ def analyze_mcp(tool_name: str, tool_input, server_hint: str = "") -> Verdict:
     is_dbx = bool(MCP_DATABRICKS_HINT.search(name) or MCP_DATABRICKS_HINT.search(server_hint)
                   or DATABRICKS_MARKERS.search(blob))
     where = f"mcp:{name}"
+    short = name.split("__")[-1]
+    if CTX.get("mode") == "cowork" and STRICT_QUERY_TOOL.search(short) and not (
+            MCP_ALLOW_NAME.search(short) and not re.search(r"sql|query|statement|execute|sample|preview|"
+                                                           r"rows|genie", short, re.I)):
+        v.add("deny", f"connector tool '{short}' runs queries; in Cowork, data-querying tools are blocked "
+                      "(Databricks or not, since connector names can hide the service)", where,
+              "databrickssql.commandSubmit / aibiGenie.executeQuery")
+        return v
     if not is_dbx:
         return v
-    short = name.split("__")[-1]
     if SQL_IN_ARGS.search(blob):
         v.add("deny", "MCP tool arguments contain a SQL statement", where, "databrickssql.commandSubmit")
     if MCP_ALLOW_NAME.search(short) and not re.search(
@@ -1100,7 +1116,9 @@ def log_decision(project: Path, record: dict) -> None:
     if os.environ.get("DBX_GUARD_NO_LOG"):
         return
     try:
-        d = Path(os.environ.get("DBX_GUARD_LOG_DIR", project / LOG_DIR_NAME))
+        default = (Path(tempfile.gettempdir()) / "databricks-guard") if CTX.get("mode") == "cowork" \
+            else project / LOG_DIR_NAME          # don't litter the user's folder from the Cowork sandbox
+        d = Path(os.environ.get("DBX_GUARD_LOG_DIR", default))
         d.mkdir(parents=True, exist_ok=True)
         with open(d / LOG_FILE_NAME, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, sort_keys=True) + "\n")
@@ -1116,6 +1134,11 @@ def _now() -> str:
 # Hook entry points
 # --------------------------------------------------------------------------------------
 def _block_message(v: Verdict) -> str:
+    if CTX.get("mode") == "cowork":
+        return (f"BLOCKED by {RULE_NAME}.\n{v.summary()}\n"
+                "Only Databricks metadata (catalog, schema, table and column names) may be read. Write the "
+                "query or code into a file in the user's folder for them to review and run instead. Do "
+                "not try another route to the same data.")
     return (f"BLOCKED by {RULE_NAME}.\n{v.summary()}\n"
             "Only Unity Catalog metadata calls (catalogs/schemas/tables list|get) may be executed. "
             "Write the query or code to a file for a human to review and run instead. Do not try "
@@ -1601,6 +1624,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     h.add_argument("--agent", choices=["claude", "cursor"], required=True)
     h.add_argument("--require-profile", metavar="NAME",
                    help="agent may reach Databricks only via this profile (the local metadata proxy)")
+    h.add_argument("--mode", choices=["local", "cowork"], default=None,
+                   help="cowork: running inside the Claude Cowork sandbox (plugin); stricter connector rules")
 
     c = sub.add_parser("check", help="classify a command, file, or MCP call")
     c.add_argument("command", nargs="?", help="shell command (or MCP args JSON with --mcp)")
@@ -1646,6 +1671,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = ap.parse_args(argv)
     if getattr(args, "require_profile", None):
         CTX["required_profile"] = args.require_profile
+    if getattr(args, "mode", None):
+        CTX["mode"] = args.mode
     if args.cmd == "hook":
         return run_hook(args.agent, sys.stdin.read())
     return {"check": cmd_check, "scan": cmd_scan, "report": cmd_report,
