@@ -836,7 +836,8 @@ def trusted_first_setup(command: str) -> bool:
     try:
         if not installer.is_file() or (USER_GUARD_DIR / "proxy-config.json").exists():
             return False
-        if (kit / "guards" / "databricks_guard.py").read_bytes() != Path(__file__).resolve().read_bytes():
+        norm = lambda b: b.replace(b"\r\n", b"\n")
+        if norm((kit / "guards" / "databricks_guard.py").read_bytes()) != norm(Path(__file__).resolve().read_bytes()):
             return False
         if kit_sha256(kit) != TRUSTED_KIT_SHA256:
             return False

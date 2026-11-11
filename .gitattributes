@@ -1,0 +1,4 @@
+# Keep Unix line endings on every OS. The plugins compare file contents (setup fingerprint),
+# so the same bytes must arrive on macOS and Windows.
+* text=auto eol=lf
+*.svg text eol=lf

@@ -62,7 +62,7 @@ def planned() -> dict:
     """Return {path: bytes} for every generated file."""
     out = {}
     digest = kit_sha256(ROOT)
-    guard = GUARD.read_text(encoding="utf-8")
+    guard = GUARD.read_bytes().decode("utf-8").replace("\r\n", "\n")
     guard = re.sub(r'^TRUSTED_KIT_SHA256 = ".*"$', f'TRUSTED_KIT_SHA256 = "{digest}"', guard, count=1,
                    flags=re.M)
     gb = guard.encode("utf-8")
@@ -71,8 +71,8 @@ def planned() -> dict:
     out[CURSOR_PLUGIN / "scripts" / "databricks_guard.py"] = gb
     out[KIT / "guards" / "databricks_guard.py"] = gb
     for src, dst in KIT_COPY.items():
-        out[KIT / dst] = (ROOT / src).read_bytes()
-    rule = (ROOT / "cursor" / "rules" / "databricks-metadata-only.mdc").read_text(encoding="utf-8")
+        out[KIT / dst] = (ROOT / src).read_bytes().replace(b"\r\n", b"\n")
+    rule = (ROOT / "cursor" / "rules" / "databricks-metadata-only.mdc").read_bytes().decode("utf-8").replace("\r\n", "\n")
     out[CURSOR_PLUGIN / "rules" / "databricks-metadata-only.mdc"] = (rule.rstrip() + "\n" + CURSOR_RULE_EXTRA).encode()
     return out
 
@@ -81,7 +81,7 @@ def main() -> int:
     check = "--check" in sys.argv
     stale = []
     for path, data in planned().items():
-        if not path.is_file() or path.read_bytes() != data:
+        if not path.is_file() or path.read_bytes().replace(b"\r\n", b"\n") != data:
             stale.append(path.relative_to(ROOT))
             if not check:
                 path.parent.mkdir(parents=True, exist_ok=True)
