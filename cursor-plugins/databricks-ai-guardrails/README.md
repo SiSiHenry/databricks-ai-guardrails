@@ -6,9 +6,11 @@ from **running queries or reading data**.
 Before you start, you need the Databricks command-line tool installed and an active Databricks
 sign-in (OAuth) on this computer.
 
-1. In Cursor, open **Customize → Plugins**, choose **From GitHub Repository**, enter
-   `https://github.com/SiSiHenry/databricks-ai-guardrails`, and install **Databricks AI Guardrails**.
-   Pick **User** scope so it covers all your projects.
+1. In Cursor, open **Settings** (gear icon, top right) or **Customize** in the sidebar, then
+   **Plugins** (in some versions **Plugins & MCPs**). This plugin isn't in the official Cursor
+   Marketplace, so don't search for it. Click **Add / +**, choose **From GitHub Repository**, paste
+   `https://github.com/SiSiHenry/databricks-ai-guardrails`, then **Install** (or **Add to Cursor**)
+   **Databricks AI Guardrails**, choosing **For myself (all projects)**.
 2. In the Agent chat, type **`/setup-databricks-guardrails`**. Cursor finishes the setup (it asks you
    to click **Run**).
 3. Quit and reopen Cursor.

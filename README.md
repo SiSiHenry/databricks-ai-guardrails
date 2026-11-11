@@ -20,12 +20,15 @@ The AI can still write queries for you. **You** decide whether to run them.
 
 ---
 
+> **Using Cursor?** Install it as a **Cursor plugin**: [jump to the steps](#cursor-desktop-app).
+> **Using Claude?** Install it as a **Claude plugin** in Cowork: [jump to the steps](#claude-app-cowork).
+
 ## Pick the app you use
 
 | I use… | How you set it up | Time |
 |---|---|---|
 | **Claude app: Cowork** | [Add a plugin with a few clicks](#claude-app-cowork) | 2 min |
-| **Cursor desktop app** | [Add a plugin, then type one command in chat](#cursor-desktop-app) | 5 min |
+| **Cursor desktop app** | [Install the Cursor plugin, then type one command in chat](#cursor-desktop-app) | 5 min |
 | **Claude app: Code tab** | [Paste one message into the chat](#claude-app-code-tab) | 10 min |
 | **Claude Code or Cursor CLI in a terminal** | [Manual install](docs/manual-install.md) | 10 min |
 
@@ -77,16 +80,29 @@ That's it. Now [check that it works](#check-that-it-works).
 You add the guardrails as a **plugin**, then type one command so Cursor finishes the setup on your
 computer.
 
-### Step 1: Add the plugin (clicks only)
+### Step 1: Install the Cursor plugin (clicks only)
 
-1. Open **Cursor**.
-2. In the sidebar, click **Customize**, then **Plugins**.
-3. Choose **From GitHub Repository** (you may need to click **Add** or **+** first) and paste:
+1. Open the **Cursor** desktop app.
+2. Open the plugin settings, using either route:
+   - click the **gear icon** (⚙︎, top right) to open **Settings**, then choose **Customize** (called
+     **Plugins & MCPs** in some versions); or
+   - click **Customize** in the left sidebar.
+3. Go to **Plugins**.
+4. This plugin is published on **GitHub**, not in the official Cursor Marketplace, so **searching for
+   it won't find it**. Instead, click **Add** (or **+**) and choose **From GitHub Repository**. In some
+   versions this is called **Add marketplace** or **Import from GitHub**. Paste this address:
    ```
    https://github.com/SiSiHenry/databricks-ai-guardrails
    ```
-4. Find **Databricks AI Guardrails** and click **Install**. When asked, choose **User**, so it
-   protects all your projects.
+5. **Databricks AI Guardrails** now appears in the list. Click **Install** (or **Add to Cursor**).
+6. When asked where to install it, choose **For myself (all projects)**. Choosing the current project
+   only would leave your other projects unprotected.
+7. Check that the plugin shows as **installed** and switched **on**. Under **Customize** you should
+   also see its rule (**databricks-metadata-only**) and its command (**setup-databricks-guardrails**).
+
+> Can't find **From GitHub Repository**? Update Cursor (**Cursor → Check for Updates** on Mac,
+> **Help → Check for Updates** on Windows), or use the [paste-a-message option](#cursor-paste-option)
+> below.
 
 ### Step 2: Finish the setup by chat (one time)
 
@@ -108,6 +124,7 @@ Now [check that it works](#check-that-it-works).
 > through to Databricks, using your existing sign-in. On **Windows**, the checks are fully active only after
 > step 2.
 
+<a id="cursor-paste-option"></a>
 <details>
 <summary>Can't use plugins? Paste a message instead.</summary>
 
