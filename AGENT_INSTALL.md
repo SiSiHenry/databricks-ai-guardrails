@@ -53,12 +53,11 @@ Invoke-WebRequest https://github.com/SiSiHenry/databricks-ai-guardrails/archive/
 
 The installer is now at `$env:TEMP\dbx-guardrails\databricks-ai-guardrails-main\install.py`.
 
-## Step 3: (handled by the installer) Databricks command-line tool and sign-in
+## Step 3: Nothing to do for Databricks sign-in
 
-You don't need to install the Databricks CLI or sign in yourself: the installer does both. If the
-CLI is missing it installs it (Homebrew / the official script on Mac, winget on Windows). If the user
-isn't signed in, it stops **before changing anything** and prints `NEEDS_DATABRICKS_ADDRESS`. Step 4
-explains what to do then.
+The user already has the Databricks command-line tool installed and is signed in to their workspace
+(OAuth). Don't install the CLI and don't run any `databricks auth` command. The installer only
+**checks** and reports.
 
 ## Step 4: Run the installer for the open project folder
 
@@ -81,23 +80,13 @@ The last line of its output must say:
 RESULT: ALL CHECKS PASSED
 ```
 
-If the output contains **`NEEDS_DATABRICKS_ADDRESS`**:
-1. Ask the user:
-   > "Please open Databricks in your web browser and copy the address from the address bar, up to
-   > and including `.com` or `.net`, for example `https://mycompany.cloud.databricks.com`, and paste
-   > it here."
-2. Run the same installer command again with `--databricks-host <ADDRESS>` added at the end.
-3. Tell the user:
-   > "A browser window is opening. Please sign in to Databricks as usual and come back here when it
-   > says you're done."
-
 If the user's Databricks profile isn't called **DEFAULT**, add `--upstream-profile <NAME>`.
 
 If it says `PROBLEMS FOUND`, read the lines that start with `FAIL` and fix what you can:
 
 | FAIL line mentions | What to do |
 |---|---|
-| `acting as: error` | The sign-in didn't work. Run the installer again (it re-checks sign-in), then run `PY ~/.databricks-guard/bin/proxy_service.py doctor` (Windows: `PY "$HOME\.databricks-guard\bin\proxy_service.py" doctor`) |
+| `acting as: error`, or the installer printed `Not signed in` | Tell the user their Databricks sign-in has expired and ask them to sign in again themselves (for example with `databricks auth login --profile DEFAULT` in their own terminal). Then run `PY ~/.databricks-guard/bin/proxy_service.py doctor` (Windows: `PY "$HOME\.databricks-guard\bin\proxy_service.py" doctor`) |
 | `not listening` | Wait 20 seconds, then run the same `doctor` command again |
 | a hook `via` some shell | Tell the user the exact line and suggest they open an issue at https://github.com/SiSiHenry/databricks-ai-guardrails/issues |
 
@@ -127,5 +116,6 @@ them:
 - Use only the `agent` profile for Databricks (`databricks -p agent …`,
   `WorkspaceClient(profile="agent")`).
 - Read metadata only. Write code for the user to run; never run queries yourself.
-- Never re-run, change, or uninstall the guardrails. If the user wants to remove them, give them
+- Never run `databricks auth …` or `databricks configure` yourself, and never re-run, change, or
+  uninstall the guardrails. If the user wants to remove them, give them
   the uninstall steps from the README so they can do it themselves.

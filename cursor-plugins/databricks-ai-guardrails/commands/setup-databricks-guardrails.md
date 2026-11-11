@@ -1,6 +1,6 @@
 ---
 name: setup-databricks-guardrails
-description: Finish setting up Databricks AI Guardrails on this computer (one time). Installs the background service that keeps Databricks access metadata-only, signs the user in to Databricks, and adds the rule to this project.
+description: Finish setting up Databricks AI Guardrails on this computer (one time). Installs the background service that keeps Databricks access metadata-only and adds the rule to this project. Assumes the user is already signed in to Databricks.
 ---
 
 # Set up Databricks AI Guardrails on this computer
@@ -38,14 +38,13 @@ Run exactly this, from the open project folder, with nothing else on the line:
 - **Mac:** `PY "INSTALLER" "$PWD"`
 - **Windows:** `PY "INSTALLER" "$PWD"`
 
-How to read the result:
-- **The output contains `NEEDS_DATABRICKS_ADDRESS`.** Ask the user:
-  > "Please open Databricks in your browser and copy the address from the address bar, up to and
-  > including `.com` or `.net`, and paste it here."
+The user is already signed in to Databricks (OAuth). Don't run any `databricks auth` command.
 
-  Then run the same command again with `--databricks-host <ADDRESS>` added at the end. A browser
-  window opens; tell the user to sign in to Databricks there and come back.
-- **The user's Databricks profile isn't called DEFAULT.** Add `--upstream-profile <NAME>`.
+How to read the result:
+- **The user's Databricks profile isn't called DEFAULT.** Add `--upstream-profile <NAME>`. If you don't
+  know the name, run `databricks auth profiles` and ask the user which one is theirs.
+- **`Not signed in to Databricks`.** Finish the setup anyway, then tell the user their sign-in seems to
+  have expired and that they should sign in again themselves. The guardrails pick it up automatically.
 - **Success:** the last line must be `RESULT: ALL CHECKS PASSED`. If it says `PROBLEMS FOUND`, tell the
   user the lines starting with `FAIL`, in plain words.
 

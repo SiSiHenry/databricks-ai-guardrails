@@ -31,6 +31,11 @@ The AI can still write queries for you. **You** decide whether to run them.
 
 Works on **Mac** and **Windows**. Using more than one app? Set up each one. They don't conflict.
 
+> **Before you start (Cursor and the Code tab):** you should already have the **Databricks
+> command-line tool** installed and be **signed in** to your Databricks workspace on this computer.
+> If you already use Databricks from your computer, you are. The setup doesn't sign you in; it uses
+> your existing sign-in.
+
 ---
 
 ## Claude app: Cowork
@@ -93,24 +98,20 @@ computer.
    /setup-databricks-guardrails
    ```
 4. Cursor will ask permission to run commands. Click **Run** each time.
-5. If it asks for your **Databricks address**: open Databricks in your browser and copy the address
-   from the address bar, up to `.com` or `.net` (for example
-   `https://mycompany.cloud.databricks.com`). Paste it into the chat.
-6. If a **browser window** opens, sign in to Databricks as usual, then return to Cursor.
-7. When Cursor says it's done, **quit Cursor completely and reopen it**.
+5. When Cursor says it's done, **quit Cursor completely and reopen it**.
    **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** **File → Exit**.
 
 Now [check that it works](#check-that-it-works).
 
 > **Why two steps?** The plugin adds the rule and the safety checks right away. Step 2 adds the part
 > that runs on your computer: the small background service that only lets "list / describe" requests
-> through to Databricks, using your sign-in. On **Windows**, the checks are fully active only after
+> through to Databricks, using your existing sign-in. On **Windows**, the checks are fully active only after
 > step 2.
 
 <details>
 <summary>Can't use plugins? Paste a message instead.</summary>
 
-Open your project in Cursor (Local agent), paste this into the chat, and follow the same steps 4–7:
+Open your project in Cursor (Local agent), paste this into the chat, and follow the same steps 4–5:
 
 ```
 Please install the Databricks AI Guardrails safety tool on this computer for this project.
@@ -141,9 +142,7 @@ Same idea: Claude installs it for you.
    ```
 
 4. When Claude asks permission to run a command, click **Allow**.
-5. If it asks for your **Databricks address**, copy it from your browser's address bar (up to `.com`
-   or `.net`) and paste it in. If a browser window opens, sign in to Databricks.
-6. When Claude says it's done, **quit the Claude app completely and reopen it**.
+5. When Claude says it's done, **quit the Claude app completely and reopen it**.
    **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** right-click the Claude icon next to the
    clock and choose **Quit**.
 
@@ -177,8 +176,8 @@ If all three behave like this, you're protected. 🎉
 computer. In Cowork, the plugin stays on until you switch it off.
 
 If the AI says it's **"waiting for the developer's Databricks login"**, your Databricks sign-in has
-expired. Ask the AI: *"How do I sign in to Databricks again?"*, or run
-`databricks auth login --profile DEFAULT` yourself. The guard picks up the new sign-in within
+expired. Sign in again the way you normally do (for example `databricks auth login --profile DEFAULT`
+in your terminal). The AI isn't allowed to sign in for you. The guard picks up the new sign-in within
 about 15 seconds.
 
 ---
@@ -221,9 +220,23 @@ Ask it to *"use the agent profile"* (Cursor / Code tab), or to *"use the list or
 </details>
 
 <details>
+<summary><b>The setup says "Not signed in to Databricks" or "command-line tool wasn't found"</b></summary>
+
+The guardrails still install. They use your **existing** Databricks sign-in and never sign you in.
+- **Command-line tool missing:** install it.
+  - **Mac:** `brew install databricks/tap/databricks`
+  - **Windows:** `winget install Databricks.DatabricksCLI`
+  - [More help](https://docs.databricks.com/aws/en/dev-tools/cli/install)
+- **Not signed in:** sign in the way you normally do, for example
+  `databricks auth login --profile DEFAULT` in your terminal. The guardrails pick it up within about
+  15 seconds; nothing needs reinstalling.
+</details>
+
+<details>
 <summary><b>My Databricks profile isn't called DEFAULT</b></summary>
 
-- **While installing by chat:** tell the AI your profile's name. It knows how to use it.
+- **While installing by chat:** tell the AI your profile's name before it runs the setup. It knows
+  how to use it.
 - **Already installed:** run the "Use a Databricks profile that isn't called DEFAULT" command in
   [Changing settings](#changing-settings).
 - **Not sure what it's called?** Run `databricks auth profiles` in the terminal. Your profiles are
@@ -373,5 +386,6 @@ Technical guide: [`guards/README.md`](guards/README.md). Cowork plugin:
   Databricks connector there that can run queries.
 - **Requirements:**
   - **Cowork:** nothing extra.
-  - **Cursor and the Code tab:** Mac or Windows 10/11, Python 3.9+ and the Databricks CLI. The AI
-    checks both, and installs the CLI if it's missing.
+  - **Cursor and the Code tab:** Mac or Windows 10/11, Python 3.9+, and the Databricks CLI with an
+    active sign-in (OAuth). The setup checks the CLI and sign-in but doesn't install or sign in for
+    you.

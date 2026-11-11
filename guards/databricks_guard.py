@@ -816,9 +816,9 @@ def _dbt_targets_databricks(cwd: Path) -> bool:
 # Hash of the setup kit files the plugin may run for FIRST-TIME setup (install.py and the proxy /
 # service helpers). Written by tools/sync_plugins.py; a test checks it. The kit's copy of this guard
 # must also be byte-identical to the running guard.
-TRUSTED_KIT_SHA256 = "b00bd2b08a4b0766283fdfd6b5279e5358cf3d79bd5a3fe8cd0552959d22cd0b"
+TRUSTED_KIT_SHA256 = "419cd7ad7291f4ad7fe9bd49723840efd19e676ae78f1063a5fe3cd95168ab66"
 TRUSTED_KIT_FILES = ("install.py", "guards/dbx_metadata_proxy.py", "guards/proxy_service.py")
-SETUP_ALLOWED_FLAGS = {"--databricks-host": 1, "--upstream-profile": 1, "--port": 1, "--skip-doctor": 0}
+SETUP_ALLOWED_FLAGS = {"--upstream-profile": 1, "--port": 1, "--skip-doctor": 0}
 
 
 def kit_sha256(kit: Path) -> str:
