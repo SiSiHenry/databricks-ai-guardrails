@@ -235,6 +235,79 @@ def install_repo(repo: Path) -> list:
 # --------------------------------------------------------------------------------------
 # User part (this computer)
 # --------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
+# Databricks CLI + sign-in (done by the installer, so the AI never runs sign-in commands)
+# --------------------------------------------------------------------------------------
+NEEDS_HOST_EXIT = 3
+
+
+def find_cli() -> str:
+    cli = shutil.which("databricks")
+    if cli:
+        return cli
+    if OSNAME == "Windows":
+        la = os.environ.get("LOCALAPPDATA", "")
+        cand = Path(la) / "Microsoft" / "WinGet" / "Links" / "databricks.exe"
+        if cand.is_file():
+            os.environ["PATH"] = str(cand.parent) + os.pathsep + os.environ.get("PATH", "")
+            return str(cand)
+    return ""
+
+
+def install_cli() -> str:
+    say("  The Databricks command-line tool is missing; installing it ...")
+    if OSNAME == "Windows":
+        cmd = ["winget", "install", "Databricks.DatabricksCLI", "--accept-source-agreements",
+               "--accept-package-agreements", "--silent"]
+    elif shutil.which("brew"):
+        cmd = ["brew", "install", "databricks/tap/databricks"]
+    else:
+        cmd = ["sh", "-c", "curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh"]
+    try:
+        subprocess.run(cmd, check=False)
+    except FileNotFoundError:
+        pass
+    cli = find_cli()
+    if not cli:
+        hint = ("winget install Databricks.DatabricksCLI" if OSNAME == "Windows"
+                else "brew install databricks/tap/databricks   (or see https://docs.databricks.com/aws/en/dev-tools/cli/install)")
+        raise SystemExit(f"Could not install the Databricks command-line tool automatically.\n"
+                         f"Please run this yourself, then run the installer again:\n  {hint}")
+    return cli
+
+
+def signed_in(cli: str, profile: str) -> bool:
+    try:
+        r = subprocess.run([cli, "current-user", "me", "-p", profile, "-o", "json"], capture_output=True,
+                           text=True, timeout=90)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
+def ensure_databricks(args) -> None:
+    cli = find_cli() or (None if args.no_cli_install else install_cli())
+    if not cli:
+        raise SystemExit("The Databricks command-line tool is not installed (see README, step 1b).")
+    up = args.upstream_profile
+    if signed_in(cli, up):
+        say(f"  Databricks sign-in for profile [{up}]: OK")
+        return
+    if not args.databricks_host:
+        say(f"\nNEEDS_DATABRICKS_ADDRESS: you are not signed in to Databricks (profile [{up}]).\n"
+            "Ask the user for their Databricks address (copy it from the browser's address bar, up to\n"
+            "'.com' or '.net'), then run this installer again with:  --databricks-host <ADDRESS>")
+        raise SystemExit(NEEDS_HOST_EXIT)
+    host = args.databricks_host.strip().rstrip("/")
+    if not host.startswith("http"):
+        host = "https://" + host
+    say(f"  Opening your browser to sign in to Databricks ({host}) ... finish the sign-in there.")
+    subprocess.run([cli, "auth", "login", "--host", host, "--profile", up], check=False)
+    if not signed_in(cli, up):
+        raise SystemExit("Databricks sign-in did not complete. Run the installer again to retry.")
+    say(f"  Databricks sign-in for profile [{up}]: OK")
+
+
 def install_user(args) -> list:
     done = []
     hook_py = base_python()
@@ -402,6 +475,10 @@ def main() -> int:
     ap.add_argument("--no-pip", action="store_true", help="don't pip-install databricks-sdk")
     ap.add_argument("--skip-doctor", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="print service commands instead of running them")
+    ap.add_argument("--databricks-host", metavar="URL", help="your workspace address, to sign in if needed")
+    ap.add_argument("--no-cli-install", action="store_true", help="don't install the Databricks CLI")
+    ap.add_argument("--skip-databricks-check", action="store_true",
+                    help="don't check the Databricks CLI or sign-in (tests / advanced)")
     ap.add_argument("--uninstall", action="store_true", help="remove hooks, [agent] profile and login service "
                                                               "from this computer")
     args = ap.parse_args()
@@ -413,6 +490,9 @@ def main() -> int:
         return 0
 
     say(f"Databricks guard installer ({OSNAME}, Python {platform.python_version()})")
+    if not args.repo_only and not args.skip_databricks_check and not args.dry_run:
+        say("\nChecking Databricks:")
+        ensure_databricks(args)
     if not args.user_only:
         repo = Path(args.repo).resolve()
         if not repo.is_dir():

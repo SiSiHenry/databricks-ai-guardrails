@@ -25,7 +25,7 @@ The AI can still write queries for you. **You** decide whether to run them.
 | I use… | How you set it up | Time |
 |---|---|---|
 | **Claude app: Cowork** | [Add a plugin with a few clicks](#claude-app-cowork) | 2 min |
-| **Cursor desktop app** | [Paste one message into the chat](#cursor-desktop-app) | 10 min |
+| **Cursor desktop app** | [Add a plugin, then type one command in chat](#cursor-desktop-app) | 5 min |
 | **Claude app: Code tab** | [Paste one message into the chat](#claude-app-code-tab) | 10 min |
 | **Claude Code or Cursor CLI in a terminal** | [Manual install](docs/manual-install.md) | 10 min |
 
@@ -69,31 +69,56 @@ That's it. Now [check that it works](#check-that-it-works).
 
 ## Cursor desktop app
 
-You'll ask Cursor's AI to install the guardrails for you. You only click **Run** when it asks,
-and sign in to Databricks once in your browser.
+You add the guardrails as a **plugin**, then type one command so Cursor finishes the setup on your
+computer.
+
+### Step 1: Add the plugin (clicks only)
 
 1. Open **Cursor**.
-2. Open the project folder you work on (**File → Open Folder…**, or pick the project in the
-   Agents window).
-3. Open the AI chat (Agent). If there's a choice between **Local** and **Cloud**, choose **Local**.
-4. Copy this message, paste it into the chat, and press <kbd>Enter</kbd>:
-
+2. In the sidebar, click **Customize**, then **Plugins**.
+3. Choose **From GitHub Repository** (you may need to click **Add** or **+** first) and paste:
    ```
-   Please install the Databricks AI Guardrails safety tool on this computer for this project.
-   Read https://raw.githubusercontent.com/SiSiHenry/databricks-ai-guardrails/main/AGENT_INSTALL.md
-   and follow it step by step. Explain each step to me in simple words and tell me whenever I
-   need to do something.
+   https://github.com/SiSiHenry/databricks-ai-guardrails
    ```
+4. Find **Databricks AI Guardrails** and click **Install**. When asked, choose **User**, so it
+   protects all your projects.
 
-5. Cursor will ask permission to run commands. Click **Run** each time.
-6. If it asks for your **Databricks address**: open Databricks in your browser and copy the
-   address from the address bar, up to `.com` or `.net` (for example
+### Step 2: Finish the setup by chat (one time)
+
+1. Open the project folder you work on (**File → Open Folder…**, or pick the project in the Agents
+   window).
+2. Open the AI chat (Agent). If there's a choice between **Local** and **Cloud**, choose **Local**.
+3. Type this and press <kbd>Enter</kbd>:
+   ```
+   /setup-databricks-guardrails
+   ```
+4. Cursor will ask permission to run commands. Click **Run** each time.
+5. If it asks for your **Databricks address**: open Databricks in your browser and copy the address
+   from the address bar, up to `.com` or `.net` (for example
    `https://mycompany.cloud.databricks.com`). Paste it into the chat.
-7. If a **browser window** opens, sign in to Databricks as usual, then return to Cursor.
-8. When Cursor says it's done, **quit Cursor completely and reopen it**.
+6. If a **browser window** opens, sign in to Databricks as usual, then return to Cursor.
+7. When Cursor says it's done, **quit Cursor completely and reopen it**.
    **Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Q</kbd>. **Windows:** **File → Exit**.
 
 Now [check that it works](#check-that-it-works).
+
+> **Why two steps?** The plugin adds the rule and the safety checks right away. Step 2 adds the part
+> that runs on your computer: the small background service that only lets "list / describe" requests
+> through to Databricks, using your sign-in. On **Windows**, the checks are fully active only after
+> step 2.
+
+<details>
+<summary>Can't use plugins? Paste a message instead.</summary>
+
+Open your project in Cursor (Local agent), paste this into the chat, and follow the same steps 4–7:
+
+```
+Please install the Databricks AI Guardrails safety tool on this computer for this project.
+Read https://raw.githubusercontent.com/SiSiHenry/databricks-ai-guardrails/main/AGENT_INSTALL.md
+and follow it step by step. Explain each step to me in simple words and tell me whenever I
+need to do something.
+```
+</details>
 
 > Keep using **Local** agents for Databricks work. Cursor's **Cloud** agents run on Cursor's
 > servers, where this guard isn't installed.
@@ -172,6 +197,8 @@ paste the install message again.
 <summary><b>Test 2 was NOT blocked</b></summary>
 
 - **Cowork:** check the plugin is switched on (**Customize → Plugins**), then start a **new** task.
+- **Cursor plugin:** check it's installed and switched on (**Customize → Plugins**), and that you
+  ran `/setup-databricks-guardrails`.
 - **Cursor / Code tab:** make sure you fully quit and reopened the app. Make sure you're in the same
   project folder, and (Cursor) that the agent is **Local**. Then ask the AI: *"Run the Databricks
   guardrails self-test with proxy_service.py doctor and tell me the result."* Every line should
@@ -257,6 +284,13 @@ The guard uses port **8787** on your own computer. If another program already us
 command. (The installer won't move an existing setup to a new port on its own.)
 </details>
 
+### Cursor plugin
+
+| I want to… | How |
+|---|---|
+| Turn the plugin off or on | **Customize → Plugins**, open **Databricks AI Guardrails**, use the on/off switch |
+| Change a setting of the part on your computer | Use the commands in the table above |
+
 ### Cowork
 
 | I want to… | How |
@@ -279,6 +313,9 @@ command. (The installer won't move an existing setup to a new port on its own.)
 
 **Cowork:** **Customize → Plugins**, open **databricks-ai-guardrails**, and remove it (or switch
 it off).
+
+**Cursor plugin:** **Customize → Plugins**, open **Databricks AI Guardrails**, and uninstall it.
+Then also run the command below to remove the part on your computer.
 
 **Cursor / Code tab:** for safety, the AI isn't allowed to remove the guardrails, so you do this
 step yourself. Open the terminal (**Mac:** <kbd>⌘ Cmd</kbd> + <kbd>Space</kbd>, type **Terminal**;
@@ -312,6 +349,7 @@ self-test result and remind me to restart the app.
 | App | What protects you |
 |---|---|
 | **Cowork** | A plugin. Its check runs inside Cowork's sandbox before every tool call and blocks anything that would query or read data. |
+| **Cursor** | A plugin with the rule and the same guard, plus a one-time setup that adds the local gateway (below). |
 | **Cursor, Code tab, terminals** | ① A **guard** checks every command and tool call before it runs. ② A small **local gateway** on your computer passes only "list / describe" requests to Databricks using *your* sign-in, so the AI never holds your login. |
 
 Both use the same written rule, which tells the AI what's allowed. Every decision is logged on your
@@ -319,7 +357,8 @@ computer. To check that the AI followed the rule, ask it to run
 `.guards/databricks_guard.py verify`.
 
 Technical guide: [`guards/README.md`](guards/README.md). Cowork plugin:
-[`plugins/databricks-ai-guardrails`](plugins/databricks-ai-guardrails).
+[`plugins/databricks-ai-guardrails`](plugins/databricks-ai-guardrails). Cursor plugin:
+[`cursor-plugins/databricks-ai-guardrails`](cursor-plugins/databricks-ai-guardrails).
 
 ### Good to know
 

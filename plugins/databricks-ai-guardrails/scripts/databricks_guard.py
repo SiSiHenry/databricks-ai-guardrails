@@ -205,7 +205,8 @@ CODE_ENV_WRITE = re.compile(r"os\.environ\s*(\[\s*['\"]DATABRICKS_\w+['\"]\s*\]\
                             r"\.(update|setdefault)\s*\([^)]*DATABRICKS_)|os\.putenv\s*\(\s*['\"]DATABRICKS_")
 PROTECTED = re.compile(r"databricks-guard|\.guards[/\\]|\.cursor[/\\]hooks\.json|"
                        r"\.claude[/\\]settings[\w.]*json|dbx_metadata_proxy|databricks_guard\.py|"
-                       r"proxy_service\.py|run_proxy\.py|proxy-config\.json|DatabricksGuardProxy", re.I)
+                       r"proxy_service\.py|run_proxy\.py|proxy-config\.json|DatabricksGuardProxy|"
+                       r"\.cursor[/\\]plugins|\.claude[/\\]plugins", re.I)
 WRITE_OPS = re.compile(r"(^|[\s;&|(])(rm|mv|cp|tee|truncate|chmod|chown|ln|unlink|shred|install|"
                        r"rsync|dd|kill|pkill|killall)\b|\bsed\s+(-\w*\s+)*-i|>{1,2}\s*\S*"
                        r"(\.databricks-guard|\.guards/|hooks\.json|settings[\w.]*json)|\bgit\s+(checkout|"
@@ -298,6 +299,9 @@ def check_shell_guardrails(command: str, v: "Verdict") -> None:
     if PROXY_KILL.search(command):
         v.add("deny", "would stop Python processes, including the metadata proxy", where)
 API_PATH = re.compile(r"/api/\d\.\d/[A-Za-z0-9_\-./{}$%]+(\?[^\s'\"]*)?")
+DBX_HOST_HINT = re.compile(r"\.cloud\.databricks\.com|azuredatabricks\.net|gcp\.databricks\.com|"
+                           r"\$\{?DATABRICKS_|\$env:DATABRICKS_|%DATABRICKS_|(127\.0\.0\.1|localhost):8787|"
+                           r"/api/2\.\d/|/oidc/", re.I)
 
 # Databricks CLI: (group, verb) pairs that are allowed. Everything else is denied.
 CLI_ALLOW: Set[Tuple[str, str]] = {
@@ -809,12 +813,76 @@ def _dbt_targets_databricks(cwd: Path) -> bool:
     return "dbt-databricks" in req
 
 
+# Hash of the setup kit files the plugin may run for FIRST-TIME setup (install.py and the proxy /
+# service helpers). Written by tools/sync_plugins.py; a test checks it. The kit's copy of this guard
+# must also be byte-identical to the running guard.
+TRUSTED_KIT_SHA256 = "b00bd2b08a4b0766283fdfd6b5279e5358cf3d79bd5a3fe8cd0552959d22cd0b"
+TRUSTED_KIT_FILES = ("install.py", "guards/dbx_metadata_proxy.py", "guards/proxy_service.py")
+SETUP_ALLOWED_FLAGS = {"--databricks-host": 1, "--upstream-profile": 1, "--port": 1, "--skip-doctor": 0}
+
+
+def kit_sha256(kit: Path) -> str:
+    h = hashlib.sha256()
+    for rel in TRUSTED_KIT_FILES:
+        h.update(rel.encode() + b"\0" + (kit / rel).read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    return h.hexdigest()
+
+
+def trusted_first_setup(command: str) -> bool:
+    """True only for: <python> <this plugin>/setup/install.py [project] [allowed flags], before any
+    install exists on this computer, with an untampered kit. Lets a plugin set itself up by chat."""
+    kit = Path(__file__).resolve().parent.parent / "setup"
+    installer = kit / "install.py"
+    try:
+        if not installer.is_file() or (USER_GUARD_DIR / "proxy-config.json").exists():
+            return False
+        if (kit / "guards" / "databricks_guard.py").read_bytes() != Path(__file__).resolve().read_bytes():
+            return False
+        if kit_sha256(kit) != TRUSTED_KIT_SHA256:
+            return False
+    except OSError:
+        return False
+    if "\n" in command.strip() or re.search(r"[;&|`<>]|\$\(", command):
+        return False
+    segs = _tokenize(command)
+    if len(segs) != 1:
+        return False
+    toks = _unwrap(segs[0])
+    if not toks or not PY_INTERPRETERS.match(_exe_name(toks[0])):
+        return False
+    args = toks[1:]
+    if args[:1] == ["-3"]:                       # Windows: py -3 install.py
+        args = args[1:]
+    if not args:
+        return False
+    try:
+        if Path(os.path.expanduser(args[0])).resolve() != installer.resolve():
+            return False
+    except OSError:
+        return False
+    rest, positional, i = args[1:], 0, 0
+    while i < len(rest):
+        a = rest[i]
+        if a.startswith("--"):
+            name = a.split("=", 1)[0]
+            if name not in SETUP_ALLOWED_FLAGS:
+                return False
+            i += 1 + (SETUP_ALLOWED_FLAGS[name] if "=" not in a else 0)
+            continue
+        positional += 1
+        i += 1
+    return positional <= 1
+
+
 def analyze_shell(command: str, cwd: Path, roots: Optional[Sequence[Path]] = None,
                   depth: int = 0) -> Verdict:
     v = Verdict()
     roots = list(roots or [cwd])
     if depth > 3:
         v.add("deny", "shell nesting too deep to verify", "<shell>")
+        return v
+    if depth == 0 and trusted_first_setup(command):
+        v.add("allow", "first-time setup with the plugin's own verified installer", command[:200])
         return v
     check_shell_guardrails(command, v)
     shell_lines, heredocs = _split_heredocs(command)
@@ -901,7 +969,7 @@ def analyze_shell(command: str, cwd: Path, roots: Optional[Sequence[Path]] = Non
                 continue
             if exe in HTTP_CLIENTS:
                 text = " ".join(args)
-                if DATABRICKS_MARKERS.search(text) or "$DATABRICKS" in text or "${DATABRICKS" in text:
+                if DBX_HOST_HINT.search(text):
                     paths = [p.group(0) for p in API_PATH.finditer(text)]
                     write = re.search(r"(^|\s)(-X|--request)\s*(POST|PUT|PATCH|DELETE)|"
                                       r"(^|\s)(-d|--data\S*|-F|--form|--json|-T|--upload-file)\b|"

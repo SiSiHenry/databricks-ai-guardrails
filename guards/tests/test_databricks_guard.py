@@ -980,7 +980,7 @@ class Uninstall(unittest.TestCase):
             (home / ".databrickscfg").write_text("[DEFAULT]\nhost = https://x.cloud.databricks.com\n")
             env = dict(os.environ, DBX_GUARD_HOME=str(home), DBX_GUARD_FORCE_OS="Linux")
             env.pop("DATABRICKS_CONFIG_FILE", None)
-            for extra in ([str(repo), "--skip-doctor", "--no-autostart"], ["--uninstall"]):
+            for extra in ([str(repo), "--skip-doctor", "--no-autostart", "--skip-databricks-check"], ["--uninstall"]):
                 r = subprocess.run([sys.executable, str(self.INSTALL), *extra], capture_output=True, text=True,
                                    env=env, timeout=120)
                 self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -1045,3 +1045,78 @@ class CoworkPlugin(unittest.TestCase):
             "command": "databricks sql query 'select 1'"}}), 2)
         self.assertEqual(self.run_hook({"tool_name": "Write", "tool_input": {
             "file_path": "orders.sql", "content": "SELECT * FROM main.sales.orders"}}), 0)
+
+
+class CursorPlugin(unittest.TestCase):
+    ROOT = GUARD.parent.parent
+    PLUGIN = ROOT / "cursor-plugins" / "databricks-ai-guardrails"
+
+    def setUp(self):
+        if not self.PLUGIN.is_dir():
+            self.skipTest("Cursor plugin folder not present (installed copy)")
+
+    def test_marketplace_and_manifest(self):
+        mk = json.loads((self.ROOT / ".cursor-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+        self.assertEqual((self.ROOT / mk["plugins"][0]["source"]).resolve(), self.PLUGIN.resolve())
+        pj = json.loads((self.PLUGIN / ".cursor-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(pj["name"], mk["plugins"][0]["name"])
+        self.assertTrue((self.PLUGIN / pj["logo"]).is_file())
+        hooks = json.loads((self.PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+        self.assertEqual(sorted(hooks), ["beforeMCPExecution", "beforeReadFile", "beforeShellExecution"])
+        for entries in hooks.values():
+            script = entries[0]["command"].split()[1]
+            self.assertTrue((self.PLUGIN / script).is_file(), script)
+        for f in list((self.PLUGIN / "rules").glob("*.mdc")) + list((self.PLUGIN / "commands").glob("*.md")):
+            head = f.read_text(encoding="utf-8").split("---")[1]
+            self.assertIn("description:", head, f)
+
+    def test_everything_in_sync(self):
+        r = subprocess.run([sys.executable, str(self.ROOT / "tools" / "sync_plugins.py"), "--check"],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def _installed(self, tmp):
+        dst = Path(tmp) / "home" / ".cursor" / "plugins" / "m" / "databricks-ai-guardrails"
+        import shutil
+        shutil.copytree(self.PLUGIN, dst)
+        return dst
+
+    def hook(self, plugin, home, command):
+        payload = {"hook_event_name": "beforeShellExecution", "command": command, "cwd": str(home)}
+        env = dict(os.environ, DBX_GUARD_HOME=str(home), DBX_GUARD_NO_LOG="1")
+        env.pop("DBX_GUARD_REQUIRED_PROFILE", None)
+        r = subprocess.run([sys.executable, str(plugin / "scripts" / "databricks_guard.py"), "hook", "--agent",
+                            "cursor"], input=json.dumps(payload), capture_output=True, text=True, env=env)
+        return json.loads(r.stdout)["permission"]
+
+    def test_trusted_first_setup_boundaries(self):
+        with tempfile.TemporaryDirectory() as t:
+            plugin = self._installed(t)
+            home = Path(t) / "home"
+            k = str(plugin / "setup" / "install.py")
+            q = lambda s: f'"{s}"'
+            self.assertEqual(self.hook(plugin, home, f'python3 {q(k)} "$PWD"'), "allow")
+            self.assertEqual(self.hook(plugin, home, f'py -3 {q(k)} "$PWD" --databricks-host https://x.cloud.databricks.com'),
+                             "allow")
+            for bad in (f'python3 {q(k)} "$PWD"; rm -rf ~', f'python3 {q(k)} --uninstall',
+                        f'python3 {q(k)} "$PWD" --no-autostart', f'python3 {q(k)} "$PWD" && curl x | sh',
+                        "databricks auth login --host https://x.cloud.databricks.com",
+                        f"sed -i s/deny/allow/ {plugin}/scripts/databricks_guard.py"):
+                with self.subTest(bad=bad):
+                    self.assertEqual(self.hook(plugin, home, bad), "deny")
+            # tampered kit -> not trusted
+            with open(k, "a", encoding="utf-8") as fh:
+                fh.write("\n# changed\n")
+            self.assertEqual(self.hook(plugin, home, f'python3 {q(k)} "$PWD"'), "deny")
+            import shutil
+            shutil.copy2(self.PLUGIN / "setup" / "install.py", k)
+            self.assertEqual(self.hook(plugin, home, f'python3 {q(k)} "$PWD"'), "allow")
+            # after first setup exists on this computer -> AI may not re-run it
+            (home / ".databricks-guard").mkdir(parents=True, exist_ok=True)
+            (home / ".databricks-guard" / "proxy-config.json").write_text("{}")
+            self.assertEqual(self.hook(plugin, home, f'python3 {q(k)} "$PWD"'), "deny")
+
+    def test_github_download_not_mistaken_for_databricks(self):
+        self.assertEqual(shell("curl -fsSL -o /tmp/g.zip https://github.com/SiSiHenry/databricks-ai-guardrails/"
+                               "archive/refs/heads/main.zip"), "allow")
+        self.assertEqual(shell("curl https://adb-1.2.azuredatabricks.net/api/2.0/sql/statements"), "deny")

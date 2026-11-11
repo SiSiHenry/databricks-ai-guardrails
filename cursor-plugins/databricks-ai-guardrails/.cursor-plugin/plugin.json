@@ -1,0 +1,13 @@
+{
+  "name": "databricks-ai-guardrails",
+  "displayName": "Databricks AI Guardrails",
+  "version": "0.1.0",
+  "description": "Lets Cursor see your Databricks table and column names, and write code for you, but blocks it from running queries or reading data.",
+  "author": {
+    "name": "SiSiHenry"
+  },
+  "homepage": "https://github.com/SiSiHenry/databricks-ai-guardrails",
+  "repository": "https://github.com/SiSiHenry/databricks-ai-guardrails",
+  "keywords": ["databricks", "guardrails", "unity-catalog", "data-safety"],
+  "logo": "assets/logo.svg"
+}

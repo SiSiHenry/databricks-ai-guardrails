@@ -3,8 +3,11 @@
 > This guide covers the **local** setup (Cursor, Claude Code, the Claude app's Code tab). For
 > **Claude Cowork**, the same guard ships as a plugin in `plugins/databricks-ai-guardrails`. It runs
 > inside Cowork's sandbox with `--mode cowork`, which has no local gateway and stricter connector
-> rules. Keep `plugins/.../scripts/databricks_guard.py` identical to this folder's copy; a test
-> checks it.
+> rules. For **Cursor**, `cursor-plugins/databricks-ai-guardrails` bundles the rule, hooks, a
+> `/setup-databricks-guardrails` command and a copy of the installer kit. The guard trusts that bundled
+> installer for the **first** setup only, and only if the kit's fingerprint (`TRUSTED_KIT_SHA256`) matches.
+> After editing the guard, installer, gateway or service helper, run `python3 tools/sync_plugins.py` to
+> refresh every plugin copy and the fingerprint; a test fails if they drift.
 
 A deterministic check that goes with the rule in `CLAUDE.md` and
 `.cursor/rules/databricks-metadata-only.mdc`.

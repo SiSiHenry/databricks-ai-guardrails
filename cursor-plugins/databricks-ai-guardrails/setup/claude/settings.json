@@ -1,0 +1,29 @@
+{
+  "env": {
+    "DATABRICKS_CONFIG_PROFILE": "agent"
+  },
+  "permissions": {
+    "deny": [
+      "Read(~/.databrickscfg)",
+      "Read(~/.databricks/**)",
+      "Bash(databricks sql:*)",
+      "Bash(databricks jobs run-now:*)",
+      "Bash(databricks jobs submit:*)",
+      "Bash(databricks bundle run:*)",
+      "Bash(databricks fs cat:*)",
+      "Bash(databricks fs cp:*)",
+      "Bash(databricks workspace export:*)",
+      "Bash(databricks secrets get-secret:*)",
+      "Bash(databricks auth token:*)",
+      "Bash(dbsqlcli:*)",
+      "Edit(.guards/**)",
+      "Write(.guards/**)",
+      "Edit(.databricks-guard/**)",
+      "Write(.databricks-guard/**)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/settings.json)",
+      "Edit(.cursor/hooks.json)",
+      "Write(.cursor/hooks.json)"
+    ]
+  }
+}

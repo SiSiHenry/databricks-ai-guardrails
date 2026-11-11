@@ -53,46 +53,14 @@ Invoke-WebRequest https://github.com/SiSiHenry/databricks-ai-guardrails/archive/
 
 The installer is now at `$env:TEMP\dbx-guardrails\databricks-ai-guardrails-main\install.py`.
 
-## Step 3: Make sure the Databricks command-line tool is installed
+## Step 3: (handled by the installer) Databricks command-line tool and sign-in
 
-Run `databricks --version`. If it prints `Databricks CLI v0.205` or higher, go to Step 4.
+You don't need to install the Databricks CLI or sign in yourself: the installer does both. If the
+CLI is missing it installs it (Homebrew / the official script on Mac, winget on Windows). If the user
+isn't signed in, it stops **before changing anything** and prints `NEEDS_DATABRICKS_ADDRESS`. Step 4
+explains what to do then.
 
-Otherwise, install it:
-
-| Computer | Command |
-|---|---|
-| Mac with Homebrew (`brew --version` works) | `brew install databricks/tap/databricks` |
-| Mac without Homebrew | `curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh \| sh`. If it says `/usr/local/bin` is not writable, tell the user it needs their Mac password and run it again with `sudo sh` in place of `sh` |
-| Windows | `winget install Databricks.DatabricksCLI --accept-source-agreements --accept-package-agreements` |
-
-**Windows only:** after installing, `databricks` may not be found until the app restarts. In that
-case use the full path `"$env:LOCALAPPDATA\Microsoft\WinGet\Links\databricks.exe"` in place of
-`databricks` for the rest of this guide.
-
-## Step 4: Make sure the user is signed in to Databricks
-
-Run `databricks auth profiles`. If a profile named **DEFAULT** is listed with **Valid: YES**, go to
-Step 5.
-
-Otherwise:
-
-1. Ask the user:
-   > "Please open Databricks in your web browser and copy the address from the address bar, up to
-   > and including `.com` or `.net`, for example `https://mycompany.cloud.databricks.com`, and paste
-   > it here."
-2. Run this with their address:
-   ```
-   databricks auth login --host <ADDRESS> --profile DEFAULT
-   ```
-3. Tell the user:
-   > "A browser window is opening. Please sign in to Databricks as usual and come back here when it
-   > says you're done."
-4. Run `databricks auth profiles` again and check that DEFAULT is **Valid: YES**.
-
-If the user's existing profile has a different name, note it as **PROFILE** and add
-`--upstream-profile PROFILE` to the Step 5 command.
-
-## Step 5: Run the installer for the open project folder
+## Step 4: Run the installer for the open project folder
 
 Run it **from the project folder** (your current working folder):
 
@@ -113,15 +81,27 @@ The last line of its output must say:
 RESULT: ALL CHECKS PASSED
 ```
 
+If the output contains **`NEEDS_DATABRICKS_ADDRESS`**:
+1. Ask the user:
+   > "Please open Databricks in your web browser and copy the address from the address bar, up to
+   > and including `.com` or `.net`, for example `https://mycompany.cloud.databricks.com`, and paste
+   > it here."
+2. Run the same installer command again with `--databricks-host <ADDRESS>` added at the end.
+3. Tell the user:
+   > "A browser window is opening. Please sign in to Databricks as usual and come back here when it
+   > says you're done."
+
+If the user's Databricks profile isn't called **DEFAULT**, add `--upstream-profile <NAME>`.
+
 If it says `PROBLEMS FOUND`, read the lines that start with `FAIL` and fix what you can:
 
 | FAIL line mentions | What to do |
 |---|---|
-| `acting as: error` | Repeat Step 4, then run `PY ~/.databricks-guard/bin/proxy_service.py doctor` (Windows: `PY "$HOME\.databricks-guard\bin\proxy_service.py" doctor`) |
+| `acting as: error` | The sign-in didn't work. Run the installer again (it re-checks sign-in), then run `PY ~/.databricks-guard/bin/proxy_service.py doctor` (Windows: `PY "$HOME\.databricks-guard\bin\proxy_service.py" doctor`) |
 | `not listening` | Wait 20 seconds, then run the same `doctor` command again |
 | a hook `via` some shell | Tell the user the exact line and suggest they open an issue at https://github.com/SiSiHenry/databricks-ai-guardrails/issues |
 
-## Step 6: Tell the user what to do next
+## Step 5: Tell the user what to do next
 
 Say this, in your own friendly words:
 

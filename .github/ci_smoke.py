@@ -31,7 +31,7 @@ def run(*args):
 
 
 failures = []
-r = run(py, ROOT / "install.py", repo, "--skip-doctor")
+r = run(py, ROOT / "install.py", repo, "--skip-doctor", "--skip-databricks-check")
 if r.returncode != 0:
     failures.append("installer failed")
 
